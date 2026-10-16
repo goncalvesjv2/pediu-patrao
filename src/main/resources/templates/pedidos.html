@@ -43,7 +43,7 @@
                 <tbody>
                     <!-- Lista vazia -->
                     <tr th:if="${#lists.isEmpty(pedidos)}">
-                        <td colspan="6" class="text-center text-muted py-5">
+                        <td colspan="7" class="text-center text-muted py-5">
                             <i class="bi bi-inbox fs-3 d-block mb-2"></i>
                             Nenhum pedido encontrado.
                         </td>
@@ -52,9 +52,22 @@
                     <tr th:each="pedido : ${pedidos}">
                         <td class="ps-4 text-muted" th:text="${pedido.id}"></td>
                         <td th:text="${pedido.clienteId}"></td>
-                        <td th:text="${pedido.tipoPizza}"></td>
-                        <td th:text="${pedido.sabor}"></td>
-                        <td th:text="${pedido.quantidade}"></td>
+                        <td>
+                            <ul class="mb-0 ps-3" th:if="${pedido.itens != null}">
+                                <li th:each="item : ${pedido.itens}">
+                                    <span th:text="${item.nomeProduto}"></span>
+                                    —
+                                    <span th:text="${item.quantidade}"></span>
+                                    x
+                                    <span th:text="${#numbers.formatDecimal(item.precoUnitario, 1, 2)}"></span>
+                                    =
+                                    <span th:text="${#numbers.formatDecimal(item.subtotal, 1, 2)}"></span>
+                                </li>
+                            </ul>
+                        </td>
+                        <td th:text="${#numbers.formatDecimal(pedido.valorTotal, 1, 2)}"></td>
+                        <td th:text="${pedido.responsavelId}"></td>
+                        <td th:text="${pedido.horarioEntrada != null ? #temporals.format(pedido.horarioEntrada, 'dd/MM/yyyy HH:mm') : '-'}"></td>
                         <td>
                             <span class="badge"
                                   th:classappend="${pedido.status == 'ENTREGUE'} ? 'bg-success' :
