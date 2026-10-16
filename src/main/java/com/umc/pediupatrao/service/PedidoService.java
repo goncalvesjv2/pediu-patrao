@@ -157,4 +157,39 @@ public class PedidoService {
         return pedidoRepository.save(pedido);
     }
 
+
+    public Pedido aplicarDesconto(String id, double percentual, Authentication authentication) {
+        if (authentication == null || authentication.getAuthorities() == null || authentication.getAuthorities().stream().noneMatch(autoridade -> autoridade.getAuthority().equals("ROLE_GERENTE"))) {
+            throw new SecurityException("Somente o GERENTE pode aplicar descontos");
+        }
+
+        if (!Double.isFinite(percentual) || percentual <= 0 || percentual > 20) {
+            throw new IllegalArgumentException("O desconto deve ser maior que zero e de, no máximo, 20%");
+        }
+
+        Pedido pedido = pedidoRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Pedido não encontrado: " + id));
+
+        if (pedido.getStatus() == StatusPedido.CANCELADO) {
+            throw new IllegalArgumentException("Não é possível aplicar desconto em um pedido cancelado");
+        }
+
+        if (pedido.getStatus() == StatusPedido.SAIU_PARA_ENTREGA || pedido.getStatus() == StatusPedido.FINALIZADO) {
+            throw new IllegalArgumentException("Não é possível aplicar desconto após a saída para entrega");
+        }
+
+        if (pedido.getItens() == null || pedido.getItens().isEmpty()) {
+            throw new IllegalArgumentException("O pedido não possui itens para calcular o desconto");
+        }
+
+        double valorOriginal = pedido.getItens().stream().mapToDouble(ItemPedido::getSubtotal).sum();
+        double valorDesconto = Math.round(valorOriginal * percentual / 100.0 * 100.0) / 100.0;
+        double valorTotal = Math.round((valorOriginal - valorDesconto) * 100.0) / 100.0;
+
+        pedido.setPercentualDesconto(percentual);
+        pedido.setValorDesconto(valorDesconto);
+        pedido.setValorTotal(valorTotal);
+
+        return pedidoRepository.save(pedido);
+    }
+
 }

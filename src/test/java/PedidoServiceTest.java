@@ -1,12 +1,9 @@
 import com.umc.pediupatrao.dto.ItemPedidoDTO;
 import com.umc.pediupatrao.dto.PedidoRequestDTO;
-import com.umc.pediupatrao.entity.Cliente;
-import com.umc.pediupatrao.entity.Produto;
+import com.umc.pediupatrao.entity.*;
 import com.umc.pediupatrao.repository.ClienteRepository;
 import com.umc.pediupatrao.repository.ProdutoRepository;
 import com.umc.pediupatrao.service.PedidoService;
-import com.umc.pediupatrao.entity.Pedido;
-import com.umc.pediupatrao.entity.StatusPedido;
 import com.umc.pediupatrao.repository.PedidoRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -315,5 +312,78 @@ class PedidoServiceTest {
         );
 
         verify(pedidoRepository).save(pedido);
+    }
+
+
+    @Test
+    void aplicarDesconto() {
+        Pedido pedido = new Pedido();
+
+        ItemPedido item = new ItemPedido(
+                "produto1",
+                "Pizza",
+                2,
+                50.0
+        );
+
+        pedido.setItens(List.of(item));
+        pedido.setValorTotal(100.0);
+        pedido.setStatus(StatusPedido.RECEBIDO);
+
+        org.springframework.security.core.authority.SimpleGrantedAuthority gerente =
+                new org.springframework.security.core.authority.SimpleGrantedAuthority(
+                        "ROLE_GERENTE"
+                );
+
+        org.mockito.Mockito.doReturn(List.of(gerente))
+                .when(authentication)
+                .getAuthorities();
+
+        when(pedidoRepository.findById("pedido1"))
+                .thenReturn(Optional.of(pedido));
+
+        when(pedidoRepository.save(pedido))
+                .thenReturn(pedido);
+
+        Pedido resultado = pedidoService.aplicarDesconto(
+                "pedido1",
+                10.0,
+                authentication
+        );
+
+        assertEquals(10.0, resultado.getPercentualDesconto(), 0.001);
+        assertEquals(10.0, resultado.getValorDesconto(), 0.001);
+        assertEquals(90.0, resultado.getValorTotal(), 0.001);
+
+        verify(pedidoRepository).save(pedido);
+    }
+
+    @Test
+    void impedirDescontoAcimaDeVintePorCento() {
+        Pedido pedido = new Pedido();
+        pedido.setStatus(StatusPedido.RECEBIDO);
+        pedido.setItens(List.of(
+                new ItemPedido("produto1", "Pizza", 2, 50.0)
+        ));
+
+        org.springframework.security.core.authority.SimpleGrantedAuthority gerente =
+                new org.springframework.security.core.authority.SimpleGrantedAuthority(
+                        "ROLE_GERENTE"
+                );
+
+        org.mockito.Mockito.doReturn(List.of(gerente))
+                .when(authentication)
+                .getAuthorities();
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> pedidoService.aplicarDesconto(
+                        "pedido1",
+                        25.0,
+                        authentication
+                )
+        );
+
+        verify(pedidoRepository, never()).save(any());
     }
 }
