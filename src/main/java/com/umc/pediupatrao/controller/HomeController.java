@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import com.umc.pediupatrao.entity.Perfil;
+import java.security.Principal;
 
 @Controller
 public class HomeController {
@@ -63,6 +65,7 @@ public class HomeController {
     @GetMapping("/usuarios/novo")
     public String novoUsuarioForm(Model model) {
         model.addAttribute("usuario", new Usuario());
+        model.addAttribute("perfis", Perfil.values());
         model.addAttribute("content", "usuarios/form :: content");
         return "layout";
     }
@@ -80,6 +83,7 @@ public class HomeController {
             return "redirect:/usuarios";
         }
 
+        model.addAttribute("perfis", Perfil.values());
         model.addAttribute("content", "usuarios/form :: content");
         return "layout";
     }
@@ -87,25 +91,39 @@ public class HomeController {
     @PostMapping("/usuarios/salvar")
     public String salvarUsuario(@ModelAttribute Usuario usuario,
             RedirectAttributes redirectAttributes) {
-        usuarioService.salvarUsuario(usuario);
-        redirectAttributes.addFlashAttribute("sucesso", "Usuário criado com sucesso!");
+        try {
+            usuarioService.salvarUsuario(usuario);
+            redirectAttributes.addFlashAttribute("sucesso", "Usuário criado com sucesso!");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("erro", e.getMessage());
+        }
         return "redirect:/usuarios";
     }
 
     @PostMapping("/usuarios/editar/{id}")
     public String atualizarUsuario(@PathVariable String id,
             @ModelAttribute Usuario usuario,
+            Principal principal,
             RedirectAttributes redirectAttributes) {
-        usuarioService.atualizarUsuario(id, usuario);
-        redirectAttributes.addFlashAttribute("sucesso", "Usuário atualizado com sucesso!");
+        try {
+            usuarioService.atualizarUsuario(id, usuario, principal.getName());
+            redirectAttributes.addFlashAttribute("sucesso", "Usuário atualizado com sucesso!");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("erro", e.getMessage());
+        }
         return "redirect:/usuarios";
     }
 
     @PostMapping("/usuarios/deletar/{id}")
     public String deletarUsuario(@PathVariable String id,
+            Principal principal,
             RedirectAttributes redirectAttributes) {
-        usuarioService.deletarUsuario(id);
-        redirectAttributes.addFlashAttribute("sucesso", "Usuário removido com sucesso!");
+        try {
+            usuarioService.deletarUsuario(id, principal.getName());
+            redirectAttributes.addFlashAttribute("sucesso", "Usuário removido com sucesso!");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("erro", e.getMessage());
+        }
         return "redirect:/usuarios";
     }
 
