@@ -17,6 +17,8 @@ public class Pedido {
     private String responsavelId;
     private LocalDateTime horarioEntrada;
     private String status;
+    private double percentualDesconto = 0.0;
+    private double valorDesconto = 0.0;
 
     public String getId() {
         return id;
@@ -53,4 +55,20 @@ public class Pedido {
     public String getStatus() { return status; }
 
     public void setStatus(String status) { this.status = status; }
+
+    public double getPercentualDesconto() {
+        return percentualDesconto;
+    }
+
+    public void setPercentualDesconto(double percentualDesconto) {
+        this.percentualDesconto = percentualDesconto;
+    }
+
+    public double getValorDesconto() {
+        return valorDesconto;
+    }
+
+    public void setValorDesconto(double valorDesconto) {
+        this.valorDesconto = valorDesconto;
+    }
 }
