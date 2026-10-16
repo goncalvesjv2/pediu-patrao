@@ -1,3 +1,9 @@
+import com.umc.pediupatrao.dto.ItemPedidoDTO;
+import com.umc.pediupatrao.dto.PedidoRequestDTO;
+import com.umc.pediupatrao.entity.Cliente;
+import com.umc.pediupatrao.entity.Produto;
+import com.umc.pediupatrao.repository.ClienteRepository;
+import com.umc.pediupatrao.repository.ProdutoRepository;
 import com.umc.pediupatrao.service.PedidoService;
 import com.umc.pediupatrao.entity.Pedido;
 import com.umc.pediupatrao.entity.StatusPedido;
@@ -8,6 +14,8 @@ import org.springframework.security.core.Authentication;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import static org.mockito.ArgumentMatchers.any;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -23,6 +31,10 @@ class PedidoServiceTest {
     private PedidoService pedidoService;
     @Mock
     private Authentication authentication;
+    @Mock
+    private ClienteRepository clienteRepository;
+    @Mock
+    private ProdutoRepository produtoRepository;
 
     @Test
     void rejeitarPedidoNoFinalizado() {
@@ -171,4 +183,105 @@ class PedidoServiceTest {
 
         verify(pedidoRepository, never()).save(pedido);
     }
+
+    @Test
+    void alterarPedidoEmPreparoParaPronto() {
+        Pedido pedido = new Pedido();
+        pedido.setStatus(StatusPedido.EM_PREPARO);
+
+        when(pedidoRepository.findById("pedido1"))
+                .thenReturn(Optional.of(pedido));
+        when(pedidoRepository.save(pedido))
+                .thenReturn(pedido);
+
+        Pedido resultado = pedidoService.atualizarStatus(
+                "pedido1",
+                StatusPedido.PRONTO,
+                authentication
+        );
+
+        org.junit.jupiter.api.Assertions.assertEquals(
+                StatusPedido.PRONTO,
+                resultado.getStatus()
+        );
+
+        verify(pedidoRepository).save(pedido);
+    }
+
+
+    @Test
+    void criarPedidoComStatusHorarioEResponsavel() {
+        PedidoRequestDTO dto = new PedidoRequestDTO();
+        dto.setClienteId("cliente1");
+
+        ItemPedidoDTO itemDto = new ItemPedidoDTO();
+        itemDto.setProdutoId("produto1");
+        itemDto.setQuantidade(2);
+
+        dto.setItens(List.of(itemDto));
+
+        // 2. Simular a existência do cliente
+        Cliente cliente = new Cliente();
+
+        when(clienteRepository.findById("cliente1"))
+                .thenReturn(Optional.of(cliente));
+
+        Produto produto = new Produto();
+        produto.setId("produto1");
+        produto.setNome("Pizza");
+        produto.setPreco(30.0);
+        produto.setAtivo(true);
+
+        when(produtoRepository.findById("produto1"))
+                .thenReturn(Optional.of(produto));
+
+        when(authentication.getName()).thenReturn("atendente01");
+
+        when(pedidoRepository.save(any(Pedido.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        Pedido pedidoCriado = pedidoService.criarPedido(dto, authentication);
+
+        org.junit.jupiter.api.Assertions.assertEquals(
+                StatusPedido.RECEBIDO,
+                pedidoCriado.getStatus()
+        );
+
+        org.junit.jupiter.api.Assertions.assertEquals(
+                "atendente01",
+                pedidoCriado.getResponsavelId()
+        );
+
+        assertNotNull(pedidoCriado.getHorarioEntrada());
+
+        org.junit.jupiter.api.Assertions.assertEquals(
+                60.0,
+                pedidoCriado.getValorTotal(),
+                0.001
+        );
+
+        verify(pedidoRepository).save(any(Pedido.class));
+    }
+
+
+    @Test
+    void naoPularEtapaDeRecebidoParaPronto() {
+        Pedido pedido = new Pedido();
+        pedido.setStatus(StatusPedido.RECEBIDO);
+
+        when(pedidoRepository.findById("pedido1"))
+                .thenReturn(Optional.of(pedido));
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalArgumentException.class,
+                () -> pedidoService.atualizarStatus(
+                        "pedido1",
+                        StatusPedido.PRONTO,
+                        authentication
+                )
+        );
+
+        verify(pedidoRepository, never()).save(pedido);
+    }
+
 }

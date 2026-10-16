@@ -28,13 +28,14 @@ public class PedidoService {
     private ClienteRepository clienteRepository;
 
     private static final Map<StatusPedido, Set<StatusPedido>> TRANSICOES_VALIDAS = Map.of(
-            StatusPedido.RECEBIDO, Set.of(StatusPedido.EM_PREPARO, StatusPedido.CANCELADO),
-            StatusPedido.EM_PREPARO, Set.of(StatusPedido.PRONTO, StatusPedido.CANCELADO),
-            StatusPedido.PRONTO, Set.of(StatusPedido.SAIU_PARA_ENTREGA, StatusPedido.CANCELADO),
+            StatusPedido.RECEBIDO, Set.of(StatusPedido.EM_PREPARO),
+            StatusPedido.EM_PREPARO, Set.of(StatusPedido.PRONTO),
+            StatusPedido.PRONTO, Set.of(StatusPedido.SAIU_PARA_ENTREGA),
             StatusPedido.SAIU_PARA_ENTREGA, Set.of(StatusPedido.FINALIZADO),
             StatusPedido.FINALIZADO, Set.of(),
             StatusPedido.CANCELADO, Set.of()
     );
+
 
     public Pedido criarPedido(PedidoRequestDTO dto, Authentication authentication) {
         if (dto == null) {
