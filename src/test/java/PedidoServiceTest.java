@@ -386,4 +386,136 @@ class PedidoServiceTest {
 
         verify(pedidoRepository, never()).save(any());
     }
+
+    @Test
+    void impedirDescontoPorAtendente() {
+        org.springframework.security.core.authority.SimpleGrantedAuthority atendente =
+                new org.springframework.security.core.authority.SimpleGrantedAuthority(
+                        "ROLE_ATENDENTE"
+                );
+
+        org.mockito.Mockito.doReturn(List.of(atendente))
+                .when(authentication)
+                .getAuthorities();
+
+        assertThrows(
+                SecurityException.class,
+                () -> pedidoService.aplicarDesconto(
+                        "pedido1",
+                        10.0,
+                        authentication
+                )
+        );
+
+        verify(pedidoRepository, never()).findById("pedido1");
+        verify(pedidoRepository, never()).save(any());
+    }
+
+
+    @Test
+    void impedirDescontoAposSaidaParaEntrega() {
+        Pedido pedido = new Pedido();
+
+        pedido.setStatus(StatusPedido.SAIU_PARA_ENTREGA);
+        pedido.setItens(List.of(
+                new ItemPedido("produto1", "Pizza", 2, 50.0)
+        ));
+
+        org.springframework.security.core.authority.SimpleGrantedAuthority gerente =
+                new org.springframework.security.core.authority.SimpleGrantedAuthority(
+                        "ROLE_GERENTE"
+                );
+
+        org.mockito.Mockito.doReturn(List.of(gerente))
+                .when(authentication)
+                .getAuthorities();
+
+        when(pedidoRepository.findById("pedido1"))
+                .thenReturn(Optional.of(pedido));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> pedidoService.aplicarDesconto(
+                        "pedido1",
+                        10.0,
+                        authentication
+                )
+        );
+
+        verify(pedidoRepository, never()).save(any());
+    }
+
+
+    @Test
+    void impedirCancelamentoDePedidoFinalizado() {
+        Pedido pedido = new Pedido();
+        pedido.setStatus(StatusPedido.FINALIZADO);
+
+        org.springframework.security.core.authority.SimpleGrantedAuthority gerente =
+                new org.springframework.security.core.authority.SimpleGrantedAuthority(
+                        "ROLE_GERENTE"
+                );
+
+        org.mockito.Mockito.doReturn(List.of(gerente))
+                .when(authentication)
+                .getAuthorities();
+
+        when(pedidoRepository.findById("pedido1"))
+                .thenReturn(Optional.of(pedido));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> pedidoService.cancelarPedido(
+                        "pedido1",
+                        "Cliente desistiu",
+                        authentication
+                )
+        );
+
+        verify(pedidoRepository, never()).save(any());
+    }
+
+    @Test
+    void impedirCancelamentoPorAtendente() {
+        org.springframework.security.core.authority.SimpleGrantedAuthority atendente =
+                new org.springframework.security.core.authority.SimpleGrantedAuthority(
+                        "ROLE_ATENDENTE"
+                );
+
+        org.mockito.Mockito.doReturn(List.of(atendente))
+                .when(authentication)
+                .getAuthorities();
+
+        assertThrows(
+                SecurityException.class,
+                () -> pedidoService.cancelarPedido(
+                        "pedido1",
+                        "Cliente desistiu",
+                        authentication
+                )
+        );
+
+        verify(pedidoRepository, never()).findById("pedido1");
+        verify(pedidoRepository, never()).save(any());
+    }
+
+    @Test
+    void impedirAlteracaoDePedidoCancelado() {
+        Pedido pedido = new Pedido();
+        pedido.setStatus(StatusPedido.CANCELADO);
+
+        when(pedidoRepository.findById("pedido1"))
+                .thenReturn(Optional.of(pedido));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> pedidoService.atualizarStatus(
+                        "pedido1",
+                        StatusPedido.EM_PREPARO,
+                        authentication
+                )
+        );
+
+        verify(pedidoRepository, never()).save(any());
+    }
 }
