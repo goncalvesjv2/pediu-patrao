@@ -195,6 +195,10 @@ public class PedidoService {
             throw new IllegalArgumentException("O pedido não possui itens para calcular o desconto");
         }
 
+        Double percentualAnterior = pedido.getPercentualDesconto();
+        Double valorDescontoAnterior = pedido.getValorDesconto();
+        Double valorTotalAnterior = pedido.getValorTotal();
+
         double valorOriginal = pedido.getItens().stream().mapToDouble(ItemPedido::getSubtotal).sum();
         double valorDesconto = Math.round(valorOriginal * percentual / 100.0 * 100.0) / 100.0;
         double valorTotal = Math.round((valorOriginal - valorDesconto) * 100.0) / 100.0;
@@ -203,7 +207,34 @@ public class PedidoService {
         pedido.setValorDesconto(valorDesconto);
         pedido.setValorTotal(valorTotal);
 
-        return pedidoRepository.save(pedido);
+        Pedido pedidoSalvo = pedidoRepository.save(pedido);
+
+        logService.registrar(
+                authentication,
+                "APLICACAO_DESCONTO",
+                "Pedido",
+                pedidoSalvo.getId(),
+                List.of(
+                        new Log.AlteracaoCampo(
+                                "percentualDesconto",
+                                String.valueOf(percentualAnterior),
+                                String.valueOf(percentual)
+                        ),
+                        new Log.AlteracaoCampo(
+                                "valorDesconto",
+                                String.valueOf(valorDescontoAnterior),
+                                String.valueOf(valorDesconto)
+                        ),
+                        new Log.AlteracaoCampo(
+                                "valorTotal",
+                                String.valueOf(valorTotalAnterior),
+                                String.valueOf(valorTotal)
+                        )
+                ),
+                null
+        );
+
+        return pedidoSalvo;
     }
 
 }
