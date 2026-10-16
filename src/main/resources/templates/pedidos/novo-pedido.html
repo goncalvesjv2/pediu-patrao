@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Novo Pedido</title>
+</head>
+<body>
+    <div th:fragment="content">
+        <input type="hidden" id="csrfToken" th:value="${_csrf.token}">
+        <!-- Cabeçalho -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold mb-0">
+                <i class="bi bi-bag-plus me-2 text-primary"></i>
+                Novo pedido
+            </h2>
+
+            <a th:href="@{/pedidos}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>
+                Voltar
+            </a>
+        </div>
+
+        <!-- Cliente -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Dados do pedido</h5>
+            </div>
+
+            <div class="card-body">
+                <label for="clienteId" class="form-label">Cliente</label>
+
+                <select id="clienteId" class="form-select" required>
+                    <option value="">Selecione um cliente</option>
+
+                    <option th:each="cliente : ${clientes}"
+                            th:value="${cliente.id}"
+                            th:text="${cliente.nome}">
+                    </option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Produtos -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">Produtos do pedido</h5>
+            </div>
+
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-7">
+                        <label for="produtoId" class="form-label">Produto</label>
+
+                        <select id="produtoId" class="form-select">
+                            <option value="">Selecione um produto</option>
+
+                            <option th:each="produto : ${produtos}"
+                                    th:if="${produto.ativo}"
+                                    th:value="${produto.id}"
+                                    th:data-preco="${produto.preco}"
+                                    th:text="${produto.nome}">
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label for="quantidade" class="form-label">Quantidade</label>
+                        <input type="number"
+                               id="quantidade"
+                               class="form-control"
+                               min="1"
+                               step="1"
+                               value="1">
+                    </div>
+
+                    <div class="col-md-2">
+                        <button type="button"
+                                id="adicionarProduto"
+                                class="btn btn-primary w-100">
+                            <i class="bi bi-plus-circle me-1"></i>
+                            Adicionar
+                        </button>
+                    </div>
+                </div>
+
+                <div id="mensagem" class="mt-3" aria-live="polite"></div>
+
+                <div class="table-responsive mt-4">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                        <tr>
+                            <th>Produto</th>
+                            <th>Preço unitário</th>
+                            <th>Quantidade</th>
+                            <th>Subtotal</th>
+                            <th>Ação</th>
+                        </tr>
+                        </thead>
+
+                        <tbody id="itensPedido">
+                        <tr id="listaVazia">
+                            <td colspan="5"
+                                class="text-center text-muted py-4">
+                                Nenhum produto adicionado.
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-end">
+                    <div class="text-end">
+                        <span class="text-muted">Total estimado</span>
+                        <h3 class="fw-bold text-primary mb-0">
+                            R$ <span id="valorTotal">0,00</span>
+                        </h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ações -->
+        <div class="d-flex justify-content-end gap-2 mb-4">
+            <a th:href="@{/pedidos}"
+               class="btn btn-outline-secondary">
+                Cancelar
+            </a>
+
+            <button type="button"
+                    id="cadastrarPedido"
+                    class="btn btn-success"
+                    disabled>
+                <i class="bi bi-check-circle me-1"></i>
+                Cadastrar pedido
+            </button>
+        </div>
+
+        <script>
+            (() => {
+                const cliente = document.getElementById("clienteId");
+                const produto = document.getElementById("produtoId");
+                const quantidade = document.getElementById("quantidade");
+                const adicionar = document.getElementById("adicionarProduto");
+                const itensPedido = document.getElementById("itensPedido");
+                const valorTotal = document.getElementById("valorTotal");
+                const mensagem = document.getElementById("mensagem");
+                const cadastrar = document.getElementById("cadastrarPedido");
+
+                const itens = [];
+
+                const moeda = valor => Number(valor).toLocaleString("pt-BR", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+
+                function mostrarMensagem(texto, tipo = "danger") {
+                    mensagem.replaceChildren();
+
+                    const alerta = document.createElement("div");
+                    alerta.className = `alert alert-${tipo} mb-0`;
+                    alerta.textContent = texto;
+                    mensagem.appendChild(alerta);
+                }
+
+                function renderizarItens() {
+                    itensPedido.replaceChildren();
+
+                    if (itens.length === 0) {
+                        const linha = document.createElement("tr");
+                        const celula = document.createElement("td");
+
+                        celula.colSpan = 5;
+                        celula.className = "text-center text-muted py-4";
+                        celula.textContent = "Nenhum produto adicionado.";
+
+                        linha.appendChild(celula);
+                        itensPedido.appendChild(linha);
+                    }
+
+                    itens.forEach((item, indice) => {
+                        const linha = document.createElement("tr");
+
+                        const nome = document.createElement("td");
+                        nome.textContent = item.nome;
+
+                        const preco = document.createElement("td");
+                        preco.textContent = `R$ ${moeda(item.preco)}`;
+
+                        const qtd = document.createElement("td");
+                        qtd.textContent = item.quantidade;
+
+                        const subtotal = document.createElement("td");
+                        subtotal.textContent =
+                            `R$ ${moeda(item.preco * item.quantidade)}`;
+
+                        const acao = document.createElement("td");
+                        const remover = document.createElement("button");
+
+                        remover.type = "button";
+                        remover.className = "btn btn-sm btn-outline-danger";
+                        remover.textContent = "Remover";
+                        remover.addEventListener("click", () => {
+                            itens.splice(indice, 1);
+                            renderizarItens();
+                        });
+
+                        acao.appendChild(remover);
+                        linha.append(nome, preco, qtd, subtotal, acao);
+                        itensPedido.appendChild(linha);
+                    });
+
+                    const total = itens.reduce(
+                        (soma, item) => soma + item.preco * item.quantidade,
+                        0
+                    );
+
+                    valorTotal.textContent = moeda(total);
+                    cadastrar.disabled = !cliente.value || itens.length === 0;
+                }
+
+                adicionar.addEventListener("click", () => {
+                    const opcao = produto.options[produto.selectedIndex];
+                    const qtd = Number(quantidade.value);
+                    const preco = Number(opcao?.dataset.preco);
+
+                    if (!produto.value) {
+                        mostrarMensagem("Selecione um produto.");
+                        return;
+                    }
+
+                    if (!Number.isInteger(qtd) || qtd < 1) {
+                        mostrarMensagem("Informe uma quantidade inteira maior que zero.");
+                        return;
+                    }
+
+                    if (!Number.isFinite(preco) || preco < 0) {
+                        mostrarMensagem("O preço do produto é inválido.");
+                        return;
+                    }
+
+                    const existente = itens.find(
+                        item => item.produtoId === produto.value
+                    );
+
+                    if (existente) {
+                        existente.quantidade += qtd;
+                    } else {
+                        itens.push({
+                            produtoId: produto.value,
+                            nome: opcao.text,
+                            preco,
+                            quantidade: qtd
+                        });
+                    }
+
+                    mensagem.replaceChildren();
+                    renderizarItens();
+                });
+
+                cliente.addEventListener("change", renderizarItens);
+
+
+                cadastrar.addEventListener("click", async () => {
+                    if (!cliente.value || itens.length === 0) {
+                        mostrarMensagem("Selecione um cliente e adicione pelo menos um produto.");
+                        return;
+                    }
+
+                    const csrfToken = document.getElementById("csrfToken")?.value;
+
+                    if (!csrfToken) {
+                        mostrarMensagem("Token de segurança ausente. Atualize a página.");
+                        return;
+                    }
+
+                    const pedido = {
+                        clienteId: cliente.value,
+                        itens: itens.map(item => ({
+                            produtoId: item.produtoId,
+                            quantidade: item.quantidade
+                        }))
+                    };
+
+                    cadastrar.disabled = true;
+                    cadastrar.textContent = "Cadastrando...";
+
+                    try {
+                        const resposta = await fetch("/api/pedidos", {
+                            method: "POST",
+                            credentials: "same-origin",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-XSRF-TOKEN": csrfToken
+                            },
+                            body: JSON.stringify(pedido)
+                        });
+
+                        if (!resposta.ok) {
+                            const texto = await resposta.text();
+                            throw new Error(
+                                `Erro HTTP ${resposta.status}: ${texto || "Não foi possível cadastrar o pedido."}`
+                            );
+                        }
+
+                        mostrarMensagem("Pedido cadastrado com sucesso!", "success");
+                        window.location.href = "/pedidos";
+
+                    } catch (erro) {
+                        mostrarMensagem(
+                            erro.message || "Erro inesperado ao cadastrar o pedido."
+                        );
+
+                        cadastrar.disabled = false;
+                        cadastrar.innerHTML =
+                            '<i class="bi bi-check-circle me-1"></i> Cadastrar pedido';
+                    }
+                });
+
+
+                renderizarItens();
+            })();
+        </script>
+    </div>
+</body>
+</html>

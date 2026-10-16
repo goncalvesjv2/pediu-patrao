@@ -139,6 +139,18 @@ public class HomeController {
         return "layout";
     }
 
+    @GetMapping("/pedidos/novo")
+    public String novoPedido(Model model) {
+        List<Cliente> clientes = clienteService.listarClientes();
+        List<Produto> produtos = produtoService.listarProdutos();
+
+        model.addAttribute("clientes", clientes);
+        model.addAttribute("produtos", produtos);
+        model.addAttribute("content", "pedidos/novo-pedido :: content");
+
+        return "layout";
+    }
+
     // ========================
     // PRODUTOS
     // ========================
