@@ -55,7 +55,6 @@ A evolução da aplicação contempla regras de negócio para o ciclo de vida do
 - Registro das alterações de status dos pedidos.
 - Registro de aplicação de descontos e cancelamento de pedidos.
 - Registro da criação e das alterações dos dados dos clientes.
-- Armazenamento de informações como usuário responsável, perfil, data e hora, operação e entidade afetada.
 - Registro de valores anteriores e novos dos campos alterados, quando aplicável.
 - Registro da justificativa de cancelamento.
 
