@@ -116,6 +116,10 @@ public class PedidoService {
             throw new IllegalArgumentException("O novo status é obrigatório");
         }
 
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new SecurityException("É necessário identificar o usuário autenticado");
+        }
+
         Pedido pedido = pedidoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Pedido não encontrado: " + id));
 
@@ -136,7 +140,11 @@ public class PedidoService {
             pedido.setHorarioSaida(LocalDateTime.now());
         }
 
-        return pedidoRepository.save(pedido);
+        Pedido pedidoSalvo = pedidoRepository.save(pedido);
+
+        logService.registrar(authentication, "ALTERACAO_STATUS", "Pedido", pedidoSalvo.getId(), List.of(new Log.AlteracaoCampo("status", statusAtual.name(), novoStatus.name())), null);
+
+        return pedidoSalvo;
     }
 
 
