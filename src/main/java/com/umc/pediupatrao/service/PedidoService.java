@@ -24,15 +24,39 @@ public class PedidoService {
     private ProdutoRepository produtoRepository;
 
     public Pedido criarPedido(PedidoRequestDTO dto, Authentication authentication) {
+        if (dto == null) {
+            throw new IllegalArgumentException("Os dados do pedido são obrigatórios");
+        }
+
+        if (dto.getClienteId() == null || dto.getClienteId().isBlank()) {
+            throw new IllegalArgumentException("O cliente é obrigatório");
+        }
+
+        if (dto.getItens() == null || dto.getItens().isEmpty()) {
+            throw new IllegalArgumentException("O pedido deve possuir pelo menos um item");
+        }
+
+        if (authentication == null || authentication.getName() == null) {
+            throw new IllegalArgumentException("Não foi possível identificar o responsável pelo pedido");
+        }
+
         List<ItemPedido> itens = new ArrayList<>();
         double total = 0;
 
         for (ItemPedidoDTO itemDto : dto.getItens()) {
-            Produto produto = produtoRepository.findById(itemDto.getProdutoId()).orElseThrow(() -> new RuntimeException("Produto não encontrado: " + itemDto.getProdutoId()));
+            if (itemDto == null) {
+                throw new IllegalArgumentException("O item do pedido é obrigatório");
+            }
+
+            if (itemDto.getProdutoId() == null || itemDto.getProdutoId().isBlank()) {
+                throw new IllegalArgumentException("O produto é obrigatório");
+            }
 
             if (itemDto.getQuantidade() <= 0) {
                 throw new IllegalArgumentException("A quantidade do produto deve ser maior que zero");
             }
+
+            Produto produto = produtoRepository.findById(itemDto.getProdutoId()).orElseThrow(() -> new RuntimeException("Produto não encontrado: " + itemDto.getProdutoId()));
 
             if (!Boolean.TRUE.equals(produto.getAtivo())) {
                 throw new RuntimeException("Produto inativo: " + produto.getNome());
