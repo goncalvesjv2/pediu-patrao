@@ -23,6 +23,7 @@ import com.umc.pediupatrao.entity.Perfil;
 import java.security.Principal;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.security.core.Authentication;
 
 @Controller
 public class HomeController {
@@ -133,8 +134,9 @@ public class HomeController {
     // PEDIDOS
     // ========================
     @GetMapping("/pedidos")
-    public String pedidos(Model model) {
+    public String pedidos(Model model, Authentication authentication) {
         List<Pedido> pedidos = pedidoService.listarPedidos();
+
         Map<String, String> nomesClientes = clienteService.listarClientes()
                 .stream()
                 .collect(Collectors.toMap(
@@ -142,12 +144,15 @@ public class HomeController {
                         Cliente::getNome,
                         (nomeExistente, nomeNovo) -> nomeExistente
                 ));
+
         model.addAttribute("pedidos", pedidos);
         model.addAttribute("nomesClientes", nomesClientes);
+        model.addAttribute("ehGerente", authentication != null && authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_GERENTE")));
         model.addAttribute("content", "pedidos :: content");
         log.info("Carregando fragmento: pedidos :: content");
         return "layout";
     }
+
 
     @GetMapping("/pedidos/novo")
     public String novoPedido(Model model) {

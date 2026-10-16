@@ -39,6 +39,7 @@
                     <th class="ps-4">ID</th>
                     <th>Cliente</th>
                     <th>Itens</th>
+                    <th>Desconto</th>
                     <th>Total</th>
                     <th>Responsável pelo pedido</th>
                     <th>Data de entrada</th>
@@ -51,7 +52,7 @@
                 <tbody>
                 <!-- Lista vazia -->
                 <tr th:if="${#lists.isEmpty(pedidos)}">
-                    <td colspan="10" class="text-center text-muted py-5">
+                    <td colspan="11" class="text-center text-muted py-5">
                         <i class="bi bi-inbox fs-3 d-block mb-2"></i>
                         Nenhum pedido encontrado.
                     </td>
@@ -72,6 +73,12 @@
                                 <span th:text="${#numbers.formatDecimal(item.subtotal, 1, 2)}"></span>
                             </li>
                         </ul>
+                    </td>
+                    <td>
+                        <span th:text="${#numbers.formatDecimal(pedido.valorDesconto, 1, 2)}"></span>
+
+                        <small class="text-muted d-block"
+                               th:text="${pedido.percentualDesconto + '%'}"></small>
                     </td>
                     <td th:text="${#numbers.formatDecimal(pedido.valorTotal, 1, 2)}"></td>
                     <td th:text="${pedido.responsavelId}"></td>
@@ -117,6 +124,32 @@
                               th:if="${pedido.status.name() == 'FINALIZADO' or pedido.status.name() == 'CANCELADO'}">
                             Sem ações disponíveis
                         </span>
+
+                        <div th:if="${ehGerente
+                                    and pedido.status.name() != 'CANCELADO'
+                                    and pedido.status.name() != 'SAIU_PARA_ENTREGA'
+                                    and pedido.status.name() != 'FINALIZADO'}"
+                             class="mt-2">
+
+                            <form class="form-desconto mb-2">
+                                <label class="form-label small">Desconto (%)</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number"
+                                           name="percentual"
+                                           class="form-control"
+                                           min="0.01"
+                                           max="20"
+                                           step="0.01"
+                                           placeholder="Até 20%"
+                                           required>
+                                    <button type="submit"
+                                            class="btn btn-outline-success">
+                                        Aplicar
+                                    </button>
+                                </div>
+                                <input type="hidden" name="pedidoId" th:value="${pedido.id}" />
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 </tbody>
@@ -148,26 +181,56 @@
                     botao.disabled = true;
 
                     try {
-                        const resposta = await fetch(
-                            `/api/pedidos/${pedidoId}/status?status=${proximoStatus}`,
+                        const resposta = await fetch(`/api/pedidos/${pedidoId}/status?status=${proximoStatus}`,
                             {
                                 method: "PUT",
                                 credentials: "same-origin",
-                                headers: {"X-XSRF-TOKEN": csrfToken}
+                                headers: { "X-XSRF-TOKEN": csrfToken }
+                            }
+                        );
+
+                        if (!resposta.ok) {
+                            const texto = await resposta.text();
+                            throw new Error(texto || `Erro HTTP ${resposta.status} ao atualizar status.`);
+                        }
+                        window.location.reload();
+                    } catch (erro) {
+                        mostrarMensagem(erro.message || "Erro ao atualizar o status.");
+                        botao.disabled = false;
+                    }
+                });
+            });
+
+            document.querySelectorAll(".form-desconto").forEach(form => {
+                form.addEventListener("submit", async event => {
+                    event.preventDefault();
+
+                    const pedidoId = form.querySelector('[name="pedidoId"]').value;
+                    const percentual = form.querySelector('[name="percentual"]').value;
+                    const botao = form.querySelector('button[type="submit"]');
+
+                    botao.disabled = true;
+
+                    try {
+                        const parametros = new URLSearchParams({ percentual });
+
+                        const resposta = await fetch(`/api/pedidos/${pedidoId}/desconto?${parametros}`,
+                            {
+                                method: "PUT",
+                                credentials: "same-origin",
+                                headers: { "X-XSRF-TOKEN": csrfToken }
                             }
                         );
 
                         if (!resposta.ok) {
                             const texto = await resposta.text();
                             throw new Error(
-                                `Erro HTTP ${resposta.status}: ${texto || "Não foi possível atualizar o status."}`
+                                texto || `Erro HTTP ${resposta.status} ao aplicar desconto.`
                             );
                         }
-
                         window.location.reload();
-
                     } catch (erro) {
-                        mostrarMensagem(erro.message || "Erro inesperado ao atualizar o status.");
+                        mostrarMensagem(erro.message || "Erro ao aplicar desconto.");
                         botao.disabled = false;
                     }
                 });
