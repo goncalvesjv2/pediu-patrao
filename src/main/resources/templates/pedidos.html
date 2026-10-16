@@ -130,6 +130,13 @@
                                     and pedido.status.name() != 'FINALIZADO'}"
                              class="mt-2">
 
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-danger btn-cancelar-pedido"
+                                    th:attr="data-pedido-id=${pedido.id}">
+                                <i class="bi bi-x-circle me-1"></i>
+                                Cancelar pedido
+                            </button>
+
                             <form class="form-desconto mb-2">
                                 <label class="form-label small">Desconto (%)</label>
                                 <div class="input-group input-group-sm">
@@ -159,6 +166,51 @@
         </div>
     </div>
 
+    <div class="modal fade" id="modalCancelamento" tabindex="-1"
+         aria-labelledby="tituloModalCancelamento" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tituloModalCancelamento">
+                        Cancelar pedido
+                    </h5>
+                    <button type="button" class="btn-close"
+                            data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <p>Informe o motivo do cancelamento.</p>
+
+                    <label for="justificativaCancelamento" class="form-label">
+                        Justificativa
+                    </label>
+
+                    <textarea id="justificativaCancelamento"
+                              class="form-control"
+                              rows="3"
+                              maxlength="500"
+                              required
+                              placeholder="Ex.: pedido duplicado"></textarea>
+
+                    <input type="hidden" id="pedidoIdCancelamento">
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary"
+                            data-bs-dismiss="modal">
+                        Voltar
+                    </button>
+
+                    <button type="button" class="btn btn-danger"
+                            id="confirmarCancelamento">
+                        Confirmar cancelamento
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         (() => {
             const csrfToken = document.getElementById("csrfToken")?.value;
@@ -171,6 +223,98 @@
                 alerta.textContent = texto;
                 mensagemAcao.appendChild(alerta);
             }
+
+            const modalElemento = document.getElementById("modalCancelamento");
+            const modalCancelamento = window.bootstrap?.Modal ? window.bootstrap.Modal.getOrCreateInstance(modalElemento) : null;
+
+            document.querySelectorAll(".btn-cancelar-pedido").forEach(botao => {
+                botao.addEventListener("click", async () => {
+                    const pedidoId = botao.dataset.pedidoId;
+
+                    const justificativa = window.prompt("Informe o motivo do cancelamento:");
+
+                    if (justificativa === null) {
+                        return;
+                    }
+
+                    if (!justificativa.trim()) {
+                        mostrarMensagem("Informe a justificativa do cancelamento.");
+                        return;
+                    }
+
+                    botao.disabled = true;
+
+                    try {
+                        const parametros = new URLSearchParams({
+                            justificativa: justificativa.trim()
+                        });
+
+                        const resposta = await fetch(`/api/pedidos/${pedidoId}/cancelamento?${parametros}`,
+                            {
+                                method: "PUT",
+                                credentials: "same-origin",
+                                headers: {
+                                    "X-XSRF-TOKEN": csrfToken
+                                }
+                            }
+                        );
+
+                        if (!resposta.ok) {
+                            const texto = await resposta.text();
+                            throw new Error(
+                                texto || `Erro HTTP ${resposta.status} ao cancelar pedido.`
+                            );
+                        }
+                        window.location.reload();
+                    } catch (erro) {
+                        mostrarMensagem(erro.message || "Erro ao cancelar o pedido.");
+                        botao.disabled = false;
+                    }
+                });
+            });
+
+            const campoJustificativa = document.getElementById("justificativaCancelamento");
+            const campoPedidoId = document.getElementById("pedidoIdCancelamento");
+            const botaoConfirmarCancelamento = document.getElementById("confirmarCancelamento");
+
+            botaoConfirmarCancelamento.addEventListener("click", async () => {
+                const pedidoId = campoPedidoId.value;
+                const justificativa = campoJustificativa.value.trim();
+
+                if (!justificativa) {
+                    campoJustificativa.classList.add("is-invalid");
+                    campoJustificativa.focus();
+                    mostrarMensagem("Informe a justificativa do cancelamento.");
+                    return;
+                }
+
+                campoJustificativa.classList.remove("is-invalid");
+                botaoConfirmarCancelamento.disabled = true;
+
+                try {
+                    const parametros = new URLSearchParams({justificativa: justificativa});
+                    const resposta = await fetch(`/api/pedidos/${pedidoId}/cancelamento?${parametros}`,
+                        {
+                            method: "PUT",
+                            credentials: "same-origin",
+                            headers: {
+                                "X-XSRF-TOKEN": csrfToken
+                            }
+                        }
+                    );
+
+                    if (!resposta.ok) {
+                        const texto = await resposta.text();
+                        throw new Error(texto || `Erro HTTP ${resposta.status} ao cancelar pedido.`);
+                    }
+
+                    window.location.reload();
+                } catch (erro) {
+                    mostrarMensagem(erro.message || "Erro ao cancelar o pedido.");
+                } finally {
+                    botaoConfirmarCancelamento.disabled = false;
+                }
+            });
 
             document.querySelectorAll(".btn-avancar-status").forEach(botao => {
                 botao.addEventListener("click", async () => {
@@ -223,9 +367,7 @@
 
                         if (!resposta.ok) {
                             const texto = await resposta.text();
-                            throw new Error(
-                                texto || `Erro HTTP ${resposta.status} ao aplicar desconto.`
-                            );
+                            throw new Error(texto || `Erro HTTP ${resposta.status} ao aplicar desconto.`);
                         }
                         window.location.reload();
                     } catch (erro) {
