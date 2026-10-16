@@ -15,10 +15,10 @@ import static org.mockito.ArgumentMatchers.any;
 import java.util.List;
 import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.never;
-import org.springframework.security.core.GrantedAuthority;
+import static org.mockito.Mockito.*;
+
+import com.umc.pediupatrao.service.LogService;
+import org.junit.jupiter.api.BeforeEach;
 
 @ExtendWith(MockitoExtension.class)
 class PedidoServiceTest {
@@ -32,6 +32,14 @@ class PedidoServiceTest {
     private ClienteRepository clienteRepository;
     @Mock
     private ProdutoRepository produtoRepository;
+    @Mock
+    private LogService logService;
+
+    @BeforeEach
+    void configurarAutenticacao() {
+        lenient().when(authentication.isAuthenticated()).thenReturn(true);
+        lenient().when(authentication.getName()).thenReturn("usuarioTeste");
+    }
 
     @Test
     void rejeitarPedidoNoFinalizado() {
@@ -258,8 +266,15 @@ class PedidoServiceTest {
         );
 
         verify(pedidoRepository).save(any(Pedido.class));
+        verify(logService).registrar(
+                eq(authentication),
+                eq("CRIACAO_PEDIDO"),
+                eq("Pedido"),
+                eq(pedidoCriado.getId()),
+                anyList(),
+                isNull()
+        );
     }
-
 
     @Test
     void naoPularEtapaDeRecebidoParaPronto() {
