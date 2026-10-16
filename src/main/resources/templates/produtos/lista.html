@@ -19,7 +19,7 @@
             <!-- Formulário de Cadastro -->
             <div class="collapse" id="formularioProduto">
                 <div class="card card-body">
-                    <form th:action="@{/api/produtos}" method="post" id="produtoForm">
+                    <form id="produtoForm">
                         <div class="mb-3">
                             <label for="nome" class="form-label">Nome do Produto</label>
                             <input type="text" id="nome" name="nome" class="form-control" placeholder="Nome do Produto" required>
@@ -76,10 +76,10 @@
                         <td th:text="${produto.ativo ? 'Sim' : 'Não'}">Sim</td>
                         <td>
                             <a th:href="@{/api/produtos/{id}(id=${produto.id})}" class="btn btn-warning btn-sm">Editar</a>
-                            <a th:href="@{/api/produtos/{id}(id=${produto.id})}" class="btn btn-danger btn-sm" 
+                            <button class="btn btn-danger btn-sm btn-excluir" th:attr="data-id=${produto.id}"
                                onclick="return confirm('Tem certeza que deseja excluir este produto?');">
                                 Excluir
-                            </a>
+                            </button>
                         </td>
                     </tr>
                 </tbody>
