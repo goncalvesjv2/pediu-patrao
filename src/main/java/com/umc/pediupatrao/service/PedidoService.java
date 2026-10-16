@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import com.umc.pediupatrao.entity.Log;
 
 @Service
 public class PedidoService {
@@ -26,6 +27,8 @@ public class PedidoService {
     private ProdutoRepository produtoRepository;
     @Autowired
     private ClienteRepository clienteRepository;
+    @Autowired
+    private LogService logService;
 
     private static final Map<StatusPedido, Set<StatusPedido>> TRANSICOES_VALIDAS = Map.of(
             StatusPedido.RECEBIDO, Set.of(StatusPedido.EM_PREPARO),
@@ -98,7 +101,10 @@ public class PedidoService {
         pedido.setHorarioEntrada(LocalDateTime.now());
         pedido.setStatus(StatusPedido.RECEBIDO);
 
-        return pedidoRepository.save(pedido);
+        Pedido pedidoSalvo = pedidoRepository.save(pedido);
+
+        logService.registrar(authentication, "CRIACAO_PEDIDO", "Pedido", pedidoSalvo.getId(), List.of(new Log.AlteracaoCampo("status", null, pedidoSalvo.getStatus().name())), null);
+        return pedidoSalvo;
     }
 
     public List<Pedido> listarPedidos() {
