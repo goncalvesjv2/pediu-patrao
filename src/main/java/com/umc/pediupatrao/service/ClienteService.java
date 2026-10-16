@@ -1,8 +1,10 @@
 package com.umc.pediupatrao.service;
 
 import com.umc.pediupatrao.entity.Cliente;
+import com.umc.pediupatrao.entity.Log;
 import com.umc.pediupatrao.repository.ClienteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
@@ -12,6 +14,8 @@ public class ClienteService {
 
     @Autowired
     private ClienteRepository clienteRepository;
+    @Autowired
+    private LogService logService;
 
     public Cliente novoCliente(Cliente cliente) {
         return clienteRepository.save(cliente);
@@ -31,13 +35,26 @@ public class ClienteService {
     }
 
     // Método para salvar um novo cliente ou atualizar um cliente existente
-    public Cliente salvar(Cliente cliente) {
-        // Se o cliente não tem ID (novo cliente), salva como novo
+    public Cliente salvar(Cliente cliente, Authentication authentication) {
         if (cliente.getId() == null) {
-            return clienteRepository.save(cliente);  // Cria um novo cliente
-        } // Se já tem ID (cliente existente), atualiza
-        else {
-            // Verifica se o cliente existe antes de atualizar
+            Cliente clienteSalvo = clienteRepository.save(cliente);
+
+            logService.registrar(
+                    authentication,
+                    "CRIACAO_CLIENTE",
+                    "Cliente",
+                    clienteSalvo.getId(),
+                    List.of(
+                            new Log.AlteracaoCampo(
+                                    "nome",
+                                    null,
+                                    clienteSalvo.getNome()
+                            )
+                    ),
+                    null
+            );
+            return clienteSalvo;
+        } else {
             if (clienteRepository.existsById(cliente.getId())) {
                 return clienteRepository.save(cliente);  // Atualiza o cliente existente
             } else {

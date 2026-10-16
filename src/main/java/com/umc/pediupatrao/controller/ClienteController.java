@@ -3,6 +3,7 @@ package com.umc.pediupatrao.controller;
 import com.umc.pediupatrao.entity.Cliente;
 import com.umc.pediupatrao.service.ClienteService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -27,15 +28,15 @@ public class ClienteController {
     }
 
     @PostMapping
-    public ResponseEntity<Cliente> salvarCliente(@RequestBody Cliente cliente) {
-        Cliente salvo = clienteService.salvar(cliente);
+    public ResponseEntity<Cliente> salvarCliente(@RequestBody Cliente cliente, Authentication authentication) {
+        Cliente salvo = clienteService.salvar(cliente, authentication);
         return ResponseEntity.status(HttpStatus.CREATED).body(salvo);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Cliente> atualizarCliente(@PathVariable String id, @RequestBody Cliente cliente) {
+    public ResponseEntity<Cliente> atualizarCliente(@PathVariable String id, @RequestBody Cliente cliente, Authentication authentication) {
         cliente.setId(id);
-        Cliente atualizado = clienteService.salvar(cliente);
+        Cliente atualizado = clienteService.salvar(cliente, authentication);
         return ResponseEntity.ok(atualizado);
     }
 }

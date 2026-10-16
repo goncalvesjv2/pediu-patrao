@@ -198,10 +198,20 @@ public class HomeController {
     }
 
     @PostMapping("/clientes/salvar")
-    public String salvarCliente(@ModelAttribute Cliente cliente,
+    public String salvarCliente(
+            @ModelAttribute Cliente cliente,
+            Authentication authentication,
             RedirectAttributes redirectAttributes) {
-        clienteService.salvar(cliente);
-        redirectAttributes.addFlashAttribute("sucesso", "Cliente criado com sucesso!");
+
+        try {
+            clienteService.salvar(cliente, authentication);
+            redirectAttributes.addFlashAttribute(
+                    "sucesso", "Cliente criado com sucesso!"
+            );
+        } catch (IllegalArgumentException | SecurityException e) {
+            redirectAttributes.addFlashAttribute("erro", e.getMessage());
+        }
+
         return "redirect:/clientes";
     }
 
@@ -223,12 +233,23 @@ public class HomeController {
     }
 
     @PostMapping("/clientes/editar/{id}")
-    public String atualizarCliente(@PathVariable String id,
+    public String atualizarCliente(
+            @PathVariable String id,
             @ModelAttribute Cliente cliente,
+            Authentication authentication,
             RedirectAttributes redirectAttributes) {
-        cliente.setId(id);
-        clienteService.salvar(cliente);
-        redirectAttributes.addFlashAttribute("sucesso", "Cliente atualizado com sucesso!");
+
+        try {
+            cliente.setId(id);
+            clienteService.salvar(cliente, authentication);
+
+            redirectAttributes.addFlashAttribute(
+                    "sucesso", "Cliente atualizado com sucesso!"
+            );
+        } catch (IllegalArgumentException | SecurityException e) {
+            redirectAttributes.addFlashAttribute("erro", e.getMessage());
+        }
+
         return "redirect:/clientes";
     }
 
