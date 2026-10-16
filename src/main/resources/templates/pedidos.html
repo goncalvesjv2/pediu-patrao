@@ -75,10 +75,9 @@
                         </ul>
                     </td>
                     <td>
-                        <span th:text="${#numbers.formatDecimal(pedido.valorDesconto, 1, 2)}"></span>
-
+                        <span th:text="${'R$ ' + #numbers.formatDecimal(pedido.valorDesconto, 1, 2, 'COMMA')}"></span>
                         <small class="text-muted d-block"
-                               th:text="${pedido.percentualDesconto + '%'}"></small>
+                               th:text="${#numbers.formatDecimal(pedido.percentualDesconto, 1, 0) + '%'}"></small>
                     </td>
                     <td th:text="${#numbers.formatDecimal(pedido.valorTotal, 1, 2)}"></td>
                     <td th:text="${pedido.responsavelId}"></td>
