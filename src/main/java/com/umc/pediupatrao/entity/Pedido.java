@@ -21,6 +21,7 @@ public class Pedido {
     private double valorDesconto = 0.0;
     private String responsavelSaidaId;
     private LocalDateTime horarioSaida;
+    private String cancelamentoPedido;
 
     public String getId() {
         return id;
@@ -81,4 +82,8 @@ public class Pedido {
     public LocalDateTime getHorarioSaida() { return horarioSaida; }
 
     public void setHorarioSaida(LocalDateTime horarioSaida) { this.horarioSaida = horarioSaida; }
+
+    public String getCancelamentoPedido() { return cancelamentoPedido; }
+
+    public void setCancelamentoPedido(String cancelamentoPedido) { this.cancelamentoPedido = cancelamentoPedido; }
 }

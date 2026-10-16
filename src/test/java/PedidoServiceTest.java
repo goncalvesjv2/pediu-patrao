@@ -17,11 +17,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.mockito.ArgumentMatchers.any;
 import java.util.List;
 import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
+import org.springframework.security.core.GrantedAuthority;
 
 @ExtendWith(MockitoExtension.class)
 class PedidoServiceTest {
@@ -284,4 +284,36 @@ class PedidoServiceTest {
         verify(pedidoRepository, never()).save(pedido);
     }
 
+    @Test
+    void cancelarPedidoComGerenteEJustificativa() {
+        Pedido pedido = new Pedido();
+        pedido.setStatus(StatusPedido.RECEBIDO);
+
+        when(pedidoRepository.findById("pedido1"))
+                .thenReturn(Optional.of(pedido));
+
+        org.springframework.security.core.authority.SimpleGrantedAuthority gerente =
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_GERENTE");
+
+        org.mockito.Mockito.doReturn(java.util.List.of(gerente))
+                .when(authentication)
+                .getAuthorities();
+
+        when(pedidoRepository.save(pedido))
+                .thenReturn(pedido);
+
+        Pedido resultado = pedidoService.cancelarPedido(
+                "pedido1",
+                "Cliente solicitou o cancelamento",
+                authentication
+        );
+
+        assertEquals(StatusPedido.CANCELADO, resultado.getStatus());
+        assertEquals(
+                "Cliente solicitou o cancelamento",
+                resultado.getCancelamentoPedido()
+        );
+
+        verify(pedidoRepository).save(pedido);
+    }
 }

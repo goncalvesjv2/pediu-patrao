@@ -132,4 +132,29 @@ public class PedidoService {
 
         return pedidoRepository.save(pedido);
     }
+
+
+    public Pedido cancelarPedido(String id, String justificativa, Authentication authentication) {
+        if (authentication == null || authentication.getAuthorities().stream().noneMatch(autoridade -> autoridade.getAuthority().equals("ROLE_GERENTE"))) {
+            throw new SecurityException("Somente o GERENTE pode cancelar pedidos");
+        }
+
+        if (justificativa == null || justificativa.isBlank()) {
+            throw new IllegalArgumentException("A justificativa do cancelamento é obrigatória");
+        }
+
+        Pedido pedido = pedidoRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Pedido não encontrado: " + id));
+
+        StatusPedido statusAtual = pedido.getStatus();
+
+        if (statusAtual == StatusPedido.SAIU_PARA_ENTREGA || statusAtual == StatusPedido.FINALIZADO || statusAtual == StatusPedido.CANCELADO) {
+            throw new IllegalArgumentException("Não é possível cancelar um pedido que já saiu para entrega, foi finalizado ou cancelado");
+        }
+
+        pedido.setStatus(StatusPedido.CANCELADO);
+        pedido.setCancelamentoPedido(justificativa.trim());
+
+        return pedidoRepository.save(pedido);
+    }
+
 }
