@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.umc.pediupatrao.entity.Perfil;
 import java.security.Principal;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 public class HomeController {
@@ -133,7 +135,15 @@ public class HomeController {
     @GetMapping("/pedidos")
     public String pedidos(Model model) {
         List<Pedido> pedidos = pedidoService.listarPedidos();
+        Map<String, String> nomesClientes = clienteService.listarClientes()
+                .stream()
+                .collect(Collectors.toMap(
+                        Cliente::getId,
+                        Cliente::getNome,
+                        (nomeExistente, nomeNovo) -> nomeExistente
+                ));
         model.addAttribute("pedidos", pedidos);
+        model.addAttribute("nomesClientes", nomesClientes);
         model.addAttribute("content", "pedidos :: content");
         log.info("Carregando fragmento: pedidos :: content");
         return "layout";
