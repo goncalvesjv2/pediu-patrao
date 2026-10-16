@@ -1,5 +1,6 @@
 package com.umc.pediupatrao.config;
 
+import com.umc.pediupatrao.entity.Perfil;
 import com.umc.pediupatrao.entity.Usuario;
 import com.umc.pediupatrao.repository.UsuarioRepository;
 import org.springframework.boot.CommandLineRunner;
@@ -14,13 +15,14 @@ public class DataInitializer {
     CommandLineRunner initDatabase(UsuarioRepository repo) {
         return args -> {
 
-            if (repo.findByUsername("admin").isEmpty()) {
+            if (!repo.existsByRole(Perfil.ADMIN)) {
 
                 BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
                 Usuario user = new Usuario();
                 user.setUsername("admin");
                 user.setPassword(encoder.encode("teste123"));
+                user.setRole(Perfil.ADMIN);
 
                 repo.save(user);
 
