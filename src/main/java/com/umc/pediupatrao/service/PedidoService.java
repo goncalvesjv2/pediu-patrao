@@ -168,9 +168,30 @@ public class PedidoService {
         pedido.setStatus(StatusPedido.CANCELADO);
         pedido.setCancelamentoPedido(justificativa.trim());
 
-        return pedidoRepository.save(pedido);
-    }
+        Pedido pedidoSalvo = pedidoRepository.save(pedido);
 
+        logService.registrar(
+                authentication,
+                "CANCELAMENTO_PEDIDO",
+                "Pedido",
+                pedidoSalvo.getId(),
+                List.of(
+                        new Log.AlteracaoCampo(
+                                "status",
+                                statusAtual.name(),
+                                StatusPedido.CANCELADO.name()
+                        ),
+                        new Log.AlteracaoCampo(
+                                "cancelamentoPedido",
+                                null,
+                                justificativa.trim()
+                        )
+                ),
+                justificativa.trim()
+        );
+
+        return pedidoSalvo;
+    }
 
     public Pedido aplicarDesconto(String id, double percentual, Authentication authentication) {
         if (authentication == null || authentication.getAuthorities() == null || authentication.getAuthorities().stream().noneMatch(autoridade -> autoridade.getAuthority().equals("ROLE_GERENTE"))) {
