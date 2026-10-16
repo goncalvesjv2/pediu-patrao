@@ -1,4 +1,3 @@
-
 package com.umc.pediupatrao.entity;
 
 import org.springframework.data.annotation.Id;
