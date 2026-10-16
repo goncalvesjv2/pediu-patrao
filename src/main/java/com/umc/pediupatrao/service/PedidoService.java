@@ -30,6 +30,10 @@ public class PedidoService {
         for (ItemPedidoDTO itemDto : dto.getItens()) {
             Produto produto = produtoRepository.findById(itemDto.getProdutoId()).orElseThrow(() -> new RuntimeException("Produto não encontrado: " + itemDto.getProdutoId()));
 
+            if (itemDto.getQuantidade() <= 0) {
+                throw new IllegalArgumentException("A quantidade do produto deve ser maior que zero");
+            }
+
             if (!Boolean.TRUE.equals(produto.getAtivo())) {
                 throw new RuntimeException("Produto inativo: " + produto.getNome());
             }
