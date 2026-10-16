@@ -41,7 +41,7 @@ Verifique se MongoDB esteja em execução antes de iniciar a aplicação.
 
 2. Entre na pasta do projeto:
     ```bash
-    cd PediuPatrao
+    cd pediu-patrao
     ```
 
 3. Configure a conexão com o MongoDB no arquivo application.properties.
