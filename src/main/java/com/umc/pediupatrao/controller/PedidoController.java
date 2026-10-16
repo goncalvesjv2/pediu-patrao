@@ -2,6 +2,7 @@ package com.umc.pediupatrao.controller;
 
 import com.umc.pediupatrao.dto.PedidoRequestDTO;
 import com.umc.pediupatrao.entity.Pedido;
+import com.umc.pediupatrao.entity.StatusPedido;
 import com.umc.pediupatrao.service.PedidoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
@@ -26,7 +27,7 @@ public class PedidoController {
     }
 
     @PutMapping("/{id}/status")
-    public Pedido atualizarStatus(@PathVariable String id, @RequestParam String status) {
-        return pedidoService.atualizarStatus(id, status);
+    public Pedido atualizarStatus(@PathVariable String id, @RequestParam StatusPedido status, Authentication authentication) {
+        return pedidoService.atualizarStatus(id, status, authentication);
     }
 }

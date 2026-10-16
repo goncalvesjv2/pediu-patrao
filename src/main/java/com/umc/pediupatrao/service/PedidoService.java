@@ -5,6 +5,7 @@ import com.umc.pediupatrao.dto.ItemPedidoDTO;
 import com.umc.pediupatrao.entity.ItemPedido;
 import com.umc.pediupatrao.entity.Pedido;
 import com.umc.pediupatrao.entity.Produto;
+import com.umc.pediupatrao.entity.StatusPedido;
 import com.umc.pediupatrao.repository.ClienteRepository;
 import com.umc.pediupatrao.repository.PedidoRepository;
 import com.umc.pediupatrao.repository.ProdutoRepository;
@@ -14,17 +15,26 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 public class PedidoService {
-
     @Autowired
     private PedidoRepository pedidoRepository;
-
     @Autowired
     private ProdutoRepository produtoRepository;
     @Autowired
     private ClienteRepository clienteRepository;
+
+    private static final Map<StatusPedido, Set<StatusPedido>> TRANSICOES_VALIDAS = Map.of(
+            StatusPedido.RECEBIDO, Set.of(StatusPedido.EM_PREPARO, StatusPedido.CANCELADO),
+            StatusPedido.EM_PREPARO, Set.of(StatusPedido.PRONTO, StatusPedido.CANCELADO),
+            StatusPedido.PRONTO, Set.of(StatusPedido.SAIU_PARA_ENTREGA, StatusPedido.CANCELADO),
+            StatusPedido.SAIU_PARA_ENTREGA, Set.of(StatusPedido.FINALIZADO),
+            StatusPedido.FINALIZADO, Set.of(),
+            StatusPedido.CANCELADO, Set.of()
+    );
 
     public Pedido criarPedido(PedidoRequestDTO dto, Authentication authentication) {
         if (dto == null) {
@@ -61,10 +71,11 @@ public class PedidoService {
                 throw new IllegalArgumentException("A quantidade do produto deve ser maior que zero");
             }
 
-            Produto produto = produtoRepository.findById(itemDto.getProdutoId()).orElseThrow(() -> new RuntimeException("Produto não encontrado: " + itemDto.getProdutoId()));
+            Produto produto = produtoRepository.findById(itemDto.getProdutoId())
+                    .orElseThrow(() -> new IllegalArgumentException("Produto não encontrado: " + itemDto.getProdutoId()));
 
             if (!Boolean.TRUE.equals(produto.getAtivo())) {
-                throw new RuntimeException("Produto inativo: " + produto.getNome());
+                throw new IllegalArgumentException("Produto inativo: " + produto.getNome());
             }
 
             ItemPedido item = new ItemPedido(
@@ -84,7 +95,7 @@ public class PedidoService {
         pedido.setValorTotal(total);
         pedido.setResponsavelId(authentication.getName());
         pedido.setHorarioEntrada(LocalDateTime.now());
-        pedido.setStatus("RECEBIDO");
+        pedido.setStatus(StatusPedido.RECEBIDO);
 
         return pedidoRepository.save(pedido);
     }
@@ -93,10 +104,31 @@ public class PedidoService {
         return pedidoRepository.findAll();
     }
 
-    public Pedido atualizarStatus(String id, String status) {
-        Pedido pedido = pedidoRepository.findById(id).orElseThrow();
-        pedido.setStatus(status);
+    public Pedido atualizarStatus(String id, StatusPedido novoStatus, Authentication authentication) {
+        if (novoStatus == null) {
+            throw new IllegalArgumentException("O novo status é obrigatório");
+        }
+
+        Pedido pedido = pedidoRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Pedido não encontrado: " + id));
+
+        StatusPedido statusAtual = pedido.getStatus();
+        Set<StatusPedido> destinosPermitidos = TRANSICOES_VALIDAS.get(statusAtual);
+
+        if (destinosPermitidos == null || !destinosPermitidos.contains(novoStatus)) {
+            throw new IllegalArgumentException("Transição inválida: não é possível ir de " + statusAtual + " para " + novoStatus);
+        }
+
+        pedido.setStatus(novoStatus);
+
+        if (novoStatus == StatusPedido.SAIU_PARA_ENTREGA) {
+            if (authentication == null || authentication.getName() == null) {
+                throw new IllegalArgumentException("Não foi possível identificar o responsável pela saída");
+            }
+            pedido.setResponsavelSaidaId(authentication.getName());
+            pedido.setHorarioSaida(LocalDateTime.now());
+        }
+
         return pedidoRepository.save(pedido);
     }
-
 }
