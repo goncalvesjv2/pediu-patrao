@@ -3,6 +3,8 @@ package com.umc.pediupatrao.entity;
 import jakarta.persistence.Entity;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Document(collection = "pedidos")
 @Entity
@@ -10,10 +12,11 @@ public class Pedido {
     @Id
     private String id;
     private String clienteId;
-    private String tipoPizza;
+    private List<ItemPedido> itens;
+    private double valorTotal;
+    private String responsavelId;
+    private LocalDateTime horarioEntrada;
     private String status;
-    private int quantidade;
-    private String sabor;
 
     public String getId() {
         return id;
@@ -31,37 +34,23 @@ public class Pedido {
         this.clienteId = clienteId;
     }
 
-    public String getTipoPizza() {
-        return tipoPizza;
-    }
+    public List<ItemPedido> getItens() { return itens; }
 
-    public void setTipoPizza(String tipoPizza) {
-        this.tipoPizza = tipoPizza;
-    }
+    public void setItens(List<ItemPedido> itens) { this.itens = itens; }
 
-    public String getStatus() {
-        return status;
-    }
+    public double getValorTotal() { return valorTotal; }
 
-    public void setStatus(String status) {
-        this.status = status;
-    }
+    public void setValorTotal(double valorTotal) { this.valorTotal = valorTotal; }
 
-    public int getQuantidade() {
-        return quantidade;
-    }
+    public String getResponsavelId() { return responsavelId; }
 
-    public void setQuantidade(int quantidade) {
-        this.quantidade = quantidade;
-    }
+    public void setResponsavelId(String responsavelId) { this.responsavelId = responsavelId; }
 
-    public String getSabor() {
-        return sabor;
-    }
+    public LocalDateTime getHorarioEntrada() { return horarioEntrada; }
 
-    public void setSabor(String sabor) {
-        this.sabor = sabor;
-    }
-    
-    
+    public void setHorarioEntrada(LocalDateTime horarioEntrada) { this.horarioEntrada = horarioEntrada; }
+
+    public String getStatus() { return status; }
+
+    public void setStatus(String status) { this.status = status; }
 }
