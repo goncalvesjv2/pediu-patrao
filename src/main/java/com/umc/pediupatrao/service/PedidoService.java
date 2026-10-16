@@ -5,6 +5,7 @@ import com.umc.pediupatrao.dto.ItemPedidoDTO;
 import com.umc.pediupatrao.entity.ItemPedido;
 import com.umc.pediupatrao.entity.Pedido;
 import com.umc.pediupatrao.entity.Produto;
+import com.umc.pediupatrao.repository.ClienteRepository;
 import com.umc.pediupatrao.repository.PedidoRepository;
 import com.umc.pediupatrao.repository.ProdutoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,8 @@ public class PedidoService {
 
     @Autowired
     private ProdutoRepository produtoRepository;
+    @Autowired
+    private ClienteRepository clienteRepository;
 
     public Pedido criarPedido(PedidoRequestDTO dto, Authentication authentication) {
         if (dto == null) {
@@ -31,6 +34,8 @@ public class PedidoService {
         if (dto.getClienteId() == null || dto.getClienteId().isBlank()) {
             throw new IllegalArgumentException("O cliente é obrigatório");
         }
+
+        clienteRepository.findById(dto.getClienteId()).orElseThrow(() -> new IllegalArgumentException("Cliente não encontrado"));
 
         if (dto.getItens() == null || dto.getItens().isEmpty()) {
             throw new IllegalArgumentException("O pedido deve possuir pelo menos um item");
