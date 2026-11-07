@@ -120,8 +120,7 @@ public class PedidoService {
             throw new SecurityException("É necessário identificar o usuário autenticado");
         }
 
-        Pedido pedido = pedidoRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Pedido não encontrado: " + id));
+        Pedido pedido = pedidoRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Pedido não encontrado: " + id));
 
         StatusPedido statusAtual = pedido.getStatus();
         Set<StatusPedido> destinosPermitidos = TRANSICOES_VALIDAS.get(statusAtual);
@@ -130,16 +129,16 @@ public class PedidoService {
             throw new IllegalArgumentException("Transição inválida: não é possível ir de " + statusAtual + " para " + novoStatus);
         }
 
-        pedido.setStatus(novoStatus);
-
         if (novoStatus == StatusPedido.SAIU_PARA_ENTREGA) {
-            if (authentication == null || authentication.getName() == null) {
+            if (authentication.getName() == null || authentication.getName().isBlank()) {
                 throw new IllegalArgumentException("Não foi possível identificar o responsável pela saída");
             }
+
             pedido.setResponsavelSaidaId(authentication.getName());
             pedido.setHorarioSaida(LocalDateTime.now());
         }
 
+        pedido.setStatus(novoStatus);
         Pedido pedidoSalvo = pedidoRepository.save(pedido);
 
         logService.registrar(authentication, "ALTERACAO_STATUS", "Pedido", pedidoSalvo.getId(), List.of(new Log.AlteracaoCampo("status", statusAtual.name(), novoStatus.name())), null);
