@@ -1,8 +1,10 @@
 package com.umc.pediupatrao.service;
 
 import com.umc.pediupatrao.dto.DashboardDTO;
+import com.umc.pediupatrao.dto.DashboardProdutosDTO;
 import com.umc.pediupatrao.dto.DashboardStatusDTO;
 import com.umc.pediupatrao.dto.DashboardVendasDTO;
+import com.umc.pediupatrao.entity.ItemPedido;
 import com.umc.pediupatrao.entity.Pedido;
 import com.umc.pediupatrao.entity.StatusPedido;
 import com.umc.pediupatrao.repository.PedidoRepository;
@@ -567,6 +569,106 @@ class DashboardServiceTest {
             for (DashboardStatusDTO dto : resultado) {
                 assertEquals(0L, dto.quantidade());
             }
+        }
+    }
+
+    @Nested
+    class ProdutosMaisVendidosTest {
+        private ItemPedido criarItem(String id, String nome, int quantidade) {
+            return new ItemPedido(id, nome, quantidade, 10.0);
+        }
+
+        private Pedido criarPedidoComItens(String id, StatusPedido status, LocalDateTime data, ItemPedido... itens) {
+            Pedido pedido = new Pedido();
+            pedido.setId(id);
+            pedido.setStatus(status);
+            pedido.setHorarioEntrada(data);
+            pedido.setItens(List.of(itens));
+            return pedido;
+        }
+
+        @Test
+        void deveSomarQuantidadesDoMesmoProduto() {
+            Pedido pedido1 = criarPedidoComItens("1", StatusPedido.FINALIZADO, data(1, 10, 0), criarItem("P1", "Pizza Calabresa", 2));
+            Pedido pedido2 = criarPedidoComItens("2", StatusPedido.FINALIZADO, data(2, 10, 0), criarItem("P1", "Pizza Calabresa", 3));
+
+            when(pedidoRepository.findAll()).thenReturn(List.of(pedido1, pedido2));
+            List<DashboardProdutosDTO> resultado = dashboardService.obterProdutosMaisVendidos(null, null);
+
+            assertEquals(1, resultado.size());
+            assertEquals("P1", resultado.get(0).produtoId());
+            assertEquals("Pizza Calabresa", resultado.get(0).nomeProduto());
+            assertEquals(5L, resultado.get(0).quantidadeVendida());
+        }
+
+        @Test
+        void deveIgnorarPedidosNaoFinalizados() {
+            Pedido finalizado = criarPedidoComItens("1", StatusPedido.FINALIZADO, data(1, 10, 0), criarItem("P1", "Pizza Calabresa", 2));
+            Pedido cancelado = criarPedidoComItens("2", StatusPedido.CANCELADO, data(2, 10, 0), criarItem("P1", "Pizza Calabresa", 5));
+
+            when(pedidoRepository.findAll()).thenReturn(List.of(finalizado, cancelado));
+            List<DashboardProdutosDTO> resultado = dashboardService.obterProdutosMaisVendidos(null, null);
+
+            assertEquals(1, resultado.size());
+            assertEquals(2L, resultado.get(0).quantidadeVendida());
+        }
+
+        @Test
+        void deveRetornarOsCincoProdutosMaisVendidos() {
+            Pedido pedido = criarPedidoComItens("1", StatusPedido.FINALIZADO, data(1, 10, 0),
+                    criarItem("P1", "Produto 1", 1),
+                    criarItem("P2", "Produto 2", 2),
+                    criarItem("P3", "Produto 3", 3),
+                    criarItem("P4", "Produto 4", 4),
+                    criarItem("P5", "Produto 5", 5),
+                    criarItem("P6", "Produto 6", 6)
+            );
+
+            when(pedidoRepository.findAll()).thenReturn(List.of(pedido));
+
+            List<DashboardProdutosDTO> resultado = dashboardService.obterProdutosMaisVendidos(null, null);
+
+            assertEquals(5, resultado.size());
+            assertEquals("P6", resultado.get(0).produtoId());
+            assertEquals(6L, resultado.get(0).quantidadeVendida());
+            assertEquals("P5", resultado.get(1).produtoId());
+            assertEquals(5L, resultado.get(1).quantidadeVendida());
+            assertEquals("P2", resultado.get(4).produtoId());
+            assertEquals(2L, resultado.get(4).quantidadeVendida());
+        }
+
+        @Test
+        void deveFiltrarProdutosPorPeriodo() {
+            LocalDate inicio = LocalDate.of(2026, 11, 1);
+            LocalDate fim = LocalDate.of(2026, 11, 10);
+
+            Pedido pedido1 = criarPedidoComItens("1", StatusPedido.FINALIZADO, data(1, 10, 0), criarItem("P1", "Pizza Calabresa", 2));
+            Pedido pedido2 = criarPedidoComItens("2", StatusPedido.FINALIZADO, data(10, 10, 0), criarItem("P1", "Pizza Calabresa", 3));
+            Pedido foraPeriodo = criarPedidoComItens("3", StatusPedido.FINALIZADO, LocalDateTime.of(2026, 10, 31, 10, 0), criarItem("P1", "Pizza Calabresa", 10));
+
+            when(pedidoRepository.findAll()).thenReturn(List.of(pedido1, pedido2, foraPeriodo));
+            List<DashboardProdutosDTO> resultado = dashboardService.obterProdutosMaisVendidos(inicio, fim);
+
+            assertEquals(1, resultado.size());
+            assertEquals(5L, resultado.get(0).quantidadeVendida());
+        }
+
+        @Test
+        void deveRetornarListaVaziaQuandoNaoExistiremVendas() {
+            when(pedidoRepository.findAll()).thenReturn(List.of());
+            List<DashboardProdutosDTO> resultado = dashboardService.obterProdutosMaisVendidos(null, null);
+            assertTrue(resultado.isEmpty());
+            verify(pedidoRepository).findAll();
+        }
+
+        @Test
+        void deveRejeitarPeriodosInvalidos() {
+            LocalDate inicio = LocalDate.of(2026, 11, 1);
+            LocalDate fim = LocalDate.of(2026, 11, 10);
+            assertThrows(IllegalArgumentException.class, () -> dashboardService.obterProdutosMaisVendidos(inicio, null));
+            assertThrows(IllegalArgumentException.class, () -> dashboardService.obterProdutosMaisVendidos(null, fim));
+            assertThrows(IllegalArgumentException.class, () -> dashboardService.obterProdutosMaisVendidos(fim, inicio));
+            verifyNoInteractions(pedidoRepository);
         }
     }
 }
