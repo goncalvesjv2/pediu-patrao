@@ -2,6 +2,7 @@ package com.umc.pediupatrao.controller;
 
 import com.umc.pediupatrao.config.SecurityConfig;
 import com.umc.pediupatrao.dto.DashboardDTO;
+import com.umc.pediupatrao.dto.DashboardProdutosDTO;
 import com.umc.pediupatrao.dto.DashboardVendasDTO;
 import com.umc.pediupatrao.dto.DashboardStatusDTO;
 import com.umc.pediupatrao.service.DashboardService;
@@ -409,6 +410,43 @@ class DashboardControllerTest {
     @Test
     void deveExigirAutenticacaoParaConsultarStatus() throws Exception {
         mockMvc.perform(get("/api/dashboard/status")).andExpect(status().is3xxRedirection());
+        verifyNoInteractions(dashboardService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ADMIN", "GERENTE"})
+    void deveConsultarProdutosMaisVendidos(String perfil) throws Exception {
+        LocalDate inicio = LocalDate.of(2026, 11, 1);
+        LocalDate fim = LocalDate.of(2026, 11, 10);
+
+        DashboardProdutosDTO produto = new DashboardProdutosDTO("P1", "Pizza Calabresa", 5L);
+        when(dashboardService.obterProdutosMaisVendidos(inicio, fim)).thenReturn(List.of(produto));
+
+        mockMvc.perform(get("/api/dashboard/produtos").with(user("usuario").roles(perfil)).param("inicio", "2026-11-01").param("fim", "2026-11-10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].produtoId").value("P1"))
+                .andExpect(jsonPath("$[0].nomeProduto").value("Pizza Calabresa"))
+                .andExpect(jsonPath("$[0].quantidadeVendida").value(5));
+
+        verify(dashboardService).obterProdutosMaisVendidos(inicio, fim);
+    }
+
+    @Test
+    void deveRejeitarPeriodoInvalidoNaConsultaDeProdutos() throws Exception {
+        LocalDate inicio = LocalDate.of(2026, 11, 10);
+        LocalDate fim = LocalDate.of(2026, 11, 1);
+
+        when(dashboardService.obterProdutosMaisVendidos(inicio, fim)).thenThrow(new IllegalArgumentException("A data inicial não pode ser posterior à data final."));
+
+        mockMvc.perform(get("/api/dashboard/produtos").with(user("admin").roles("ADMIN")).param("inicio", "2026-11-10").param("fim", "2026-11-01"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("A data inicial não pode ser posterior à data final."));
+    }
+
+    @Test
+    void deveBloquearAcessoNaoAutorizadoAosProdutos() throws Exception {
+        mockMvc.perform(get("/api/dashboard/produtos").with(user("atendente").roles("ATENDENTE"))).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/dashboard/produtos")).andExpect(status().is3xxRedirection());
         verifyNoInteractions(dashboardService);
     }
 }
