@@ -50,7 +50,6 @@
                         <div class="card-body">
                             <h5>Total de pedidos</h5>
                             <h2 id="totalPedidos">--</h2>
-                            <i class="bi bi-bag"></i>
                         </div>
                     </div>
                 </div>
@@ -61,7 +60,6 @@
                         <div class="card-body">
                             <h5>Pedidos finalizados</h5>
                             <h2 id="pedidosFinalizados">--</h2>
-                            <i class="bi bi-check-circle"></i>
                         </div>
                     </div>
                 </div>
@@ -71,7 +69,6 @@
                         <div class="card-body">
                             <h5>Pedidos cancelados</h5>
                             <h2 id="pedidosCancelados">--</h2>
-                            <i class="bi bi-x-circle"></i>
                         </div>
                     </div>
                 </div>
@@ -82,7 +79,6 @@
                         <div class="card-body">
                             <h5>Faturamento</h5>
                             <h2 id="faturamento">--</h2>
-                            <i class="bi bi-cash-stack"></i>
                         </div>
                     </div>
                 </div>
@@ -92,7 +88,6 @@
                         <div class="card-body">
                             <h5>Ticket médio</h5>
                             <h2 id="ticketMedio">--</h2>
-                            <i class="bi bi-currency-dollar"></i>
                         </div>
                     </div>
                 </div>
@@ -112,7 +107,6 @@
                     <div class="card dashboard-grafico">
                         <div class="card-body">
                             <h5 class="card-title mb-4">
-                                <i class="bi bi-bar-chart"></i>
                                 Faturamento diário
                             </h5>
 
@@ -127,7 +121,6 @@
                     <div class="card dashboard-grafico">
                         <div class="card-body">
                             <h5 class="card-title mb-4">
-                                <i class="bi bi-graph-up"></i>
                                 Pedidos finalizados por dia
                             </h5>
 
@@ -150,7 +143,6 @@
                     <div class="card dashboard-grafico">
                         <div class="card-body">
                             <h5 class="card-title mb-4">
-                                <i class="bi bi-pie-chart"></i>
                                 Pedidos por situação
                             </h5>
 
@@ -158,6 +150,30 @@
                                 <canvas id="graficoStatus"></canvas>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <h4 class="mt-5 mb-3">
+                Produtos mais vendidos
+            </h4>
+
+            <div id="mensagemProdutos" class="d-none" role="status" aria-live="polite"></div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                            <tr>
+                                <th scope="col">Posição</th>
+                                <th scope="col">Produto</th>
+                                <th scope="col">Quantidade vendida</th>
+                            </tr>
+                            </thead>
+
+                            <tbody id="tabelaProdutos"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>

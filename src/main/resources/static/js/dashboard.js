@@ -9,6 +9,8 @@ let graficoFaturamento = null;
 let graficoPedidos = null;
 const mensagemStatus = document.getElementById("mensagemStatus");
 let graficoStatus = null;
+const mensagemProdutos = document.getElementById("mensagemProdutos");
+const tabelaProdutos = document.getElementById("tabelaProdutos");
 
 const formatadorMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL"});
 
@@ -315,6 +317,93 @@ async function carregarSituacaoPedidos(inicio, fim) {
     }
 }
 
+async function carregarProdutosMaisVendidos(inicio, fim) {
+    const url = new URL(
+        `${dashboard.dataset.apiUrl}/produtos`,
+        window.location.origin
+    );
+
+    if (inicio) {
+        url.searchParams.set("inicio", inicio);
+    }
+
+    if (fim) {
+        url.searchParams.set("fim", fim);
+    }
+
+    tabelaProdutos.replaceChildren();
+
+    mensagemProdutos.className = "alert alert-info mb-3";
+    mensagemProdutos.textContent = "Carregando produtos...";
+
+    try {
+        const resposta = await fetch(url, {
+            credentials: "same-origin",
+            headers: {
+                "Accept": "application/json"
+            },
+            cache: "no-store"
+        });
+
+        const tipoResposta = resposta.headers.get("content-type") || "";
+
+        if (!tipoResposta.includes("application/json")) {
+            throw new Error("Não foi possível obter os dados. Verifique sua sessão.");
+        }
+
+        const produtos = await resposta.json();
+
+        if (!resposta.ok) {
+            throw new Error(produtos.erro || "Erro ao consultar os produtos mais vendidos.");
+        }
+
+        if (!Array.isArray(produtos)) {
+            throw new Error("Formato de dados inválido.");
+        }
+
+        mensagemProdutos.className = "d-none";
+        mensagemProdutos.textContent = "";
+
+        if (produtos.length === 0) {
+            const linha = document.createElement("tr");
+            const coluna = document.createElement("td");
+            coluna.colSpan = 3;
+            coluna.className = "text-center text-muted py-4";
+            coluna.textContent = "Nenhum produto vendido no período selecionado.";
+            linha.appendChild(coluna);
+            tabelaProdutos.appendChild(linha);
+            return;
+        }
+
+        produtos.forEach((produto, indice) => {
+            const linha = document.createElement("tr");
+
+            const colunaPosicao = document.createElement("td");
+            colunaPosicao.textContent = `${indice + 1}º`;
+
+            const colunaNome = document.createElement("td");
+            colunaNome.textContent = produto.nomeProduto;
+            const colunaQuantidade = document.createElement("td");
+            colunaQuantidade.textContent = Number(produto.quantidadeVendida).toLocaleString("pt-BR");
+
+            linha.appendChild(colunaPosicao);
+            linha.appendChild(colunaNome);
+            linha.appendChild(colunaQuantidade);
+
+            tabelaProdutos.appendChild(linha);
+        });
+
+    } catch (erro) {
+        mensagemProdutos.className = "alert alert-danger mb-3";
+
+        if (erro instanceof TypeError) {
+            mensagemProdutos.textContent = "Não foi possível conectar ao servidor.";
+        } else {
+            mensagemProdutos.textContent = erro.message;
+        }
+    }
+}
+
 async function carregarDashboard() {
     const inicio = document.getElementById("inicio").value;
     const fim = document.getElementById("fim").value;
@@ -359,6 +448,7 @@ async function carregarDashboard() {
         atualizarIndicadores(dados);
         await carregarGraficos(inicio, fim);
         await carregarSituacaoPedidos(inicio, fim);
+        await carregarProdutosMaisVendidos(inicio, fim);
 
         mensagem.className = "d-none";
         mensagem.textContent = "";
