@@ -578,7 +578,7 @@ BUILD SUCCESS
 Em uma execução anterior, a suíte completa apresentou:
 
 ```text
-Tests run: 409
+Tests run: 413
 Failures: 0
 Errors: 0
 Skipped: 0
