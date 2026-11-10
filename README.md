@@ -11,6 +11,7 @@ A evolução da aplicação contempla regras de negócio para o ciclo de vida do
 ## Apresentação
 
 Documentação da Dashboard: [docs/dashboard.md](/docs/dashboard.md)
+Apresentação em vídeo: https://drive.google.com/file/d/1ZvPvB9QzAqmGQO3XzkTeJAw_YbI2jX4B/view?usp=sharing
 
 ## Tecnologias utilizadas
 
