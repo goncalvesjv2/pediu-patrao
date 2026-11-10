@@ -63,3 +63,33 @@ body {
         cursor: pointer;
     }
 }
+
+#dashboard {
+    background-color: #ffffff;
+    color: #212529;
+}
+
+#dashboard .indicador-card {
+    background-color: #ffffff;
+    color: #212529;
+    border: 1px solid #d6d6d6;
+    border-radius: 8px;
+    box-shadow: none;
+}
+
+#dashboard .indicador-card h5 {
+    color: #212529;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+#dashboard .indicador-card h2 {
+    color: #212529;
+    font-size: 30px;
+    font-weight: 600;
+}
+
+#dashboard .card {
+    border: 1px solid #d6d6d6;
+    box-shadow: none;
+}
