@@ -450,8 +450,14 @@ async function carregarDashboard() {
         await carregarSituacaoPedidos(inicio, fim);
         await carregarProdutosMaisVendidos(inicio, fim);
 
-        mensagem.className = "d-none";
-        mensagem.textContent = "";
+        if (dados.totalPedidos === 0) {
+            mensagem.className = "alert alert-info mb-3";
+            mensagem.textContent = "Nenhum pedido encontrado no período selecionado.";
+
+        } else {
+            mensagem.className = "d-none";
+            mensagem.textContent = "";
+        }
 
     } catch (erro) {
         mensagem.className = "alert alert-danger mb-3";
