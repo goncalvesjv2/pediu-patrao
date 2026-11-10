@@ -6,11 +6,17 @@ body {
 }
 
 #sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 250px;
     min-width: 250px;
     max-width: 250px;
+    height: 100vh;
+    overflow-y: auto;
     background-color: #343a40;
     color: white;
-    height: 100vh;
+    z-index: 1000;
 }
 
 #sidebar a {
@@ -37,6 +43,12 @@ body {
     padding: 20px;
 }
 
+main.container-fluid {
+    margin-left: 250px;
+    width: calc(100% - 250px);
+    min-width: 0;
+}
+
 @media (max-width: 768px) {
     #sidebar {
         position: fixed;
@@ -53,6 +65,11 @@ body {
 
     #content {
         margin-left: 0;
+    }
+
+    main.container-fluid {
+        margin-left: 0;
+        width: 100%;
     }
 
     .toggle-btn {
@@ -92,4 +109,18 @@ body {
 #dashboard .card {
     border: 1px solid #d6d6d6;
     box-shadow: none;
+}
+
+#dashboard .dashboard-grafico {
+    background-color: #ffffff;
+    color: #212529;
+    border: 1px solid #d6d6d6;
+    border-radius: 8px;
+    box-shadow: none;
+}
+
+#dashboard .grafico-container {
+    position: relative;
+    width: 100%;
+    height: 320px;
 }
