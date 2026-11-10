@@ -8,6 +8,10 @@ O projeto tem como objetivo organizar o cadastro de clientes, o gerenciamento de
 
 A evolução da aplicação contempla regras de negócio para o ciclo de vida dos pedidos, aplicação de descontos, cancelamentos e rastreabilidade das alterações realizadas.
 
+## Apresentação
+
+Documentação da Dashboard: [docs/dashboard.md](/docs/dashboard.md)
+
 ## Tecnologias utilizadas
 
 - Java
@@ -35,34 +39,40 @@ A evolução da aplicação contempla regras de negócio para o ciclo de vida do
 
 - Criação de pedidos associados a clientes e produtos.
 - Cálculo do valor total do pedido com base nos itens.
-- Registro do responsável pela criação e do horário de entrada do pedido.
-- Controle do fluxo de status: recebido, em preparo, pronto, saiu para entrega e finalizado.
+- Registro do responsável pela criação e do horário de entrada.
+- Controle do fluxo de status dos pedidos.
 - Registro do responsável e do horário de saída para entrega.
 - Validação das transições permitidas entre os status.
-- Cancelamento de pedidos mediante justificativa, conforme as regras de negócio.
+- Cancelamento de pedidos mediante justificativa.
 - Aplicação de descontos de até 20%, conforme as permissões do usuário.
 
 ### 4. Autenticação e controle de acesso
 
-- Autenticação de usuários com Spring Security.
-- Controle de acesso às funcionalidades conforme o perfil do usuário.
-- Restrição das operações de cancelamento e aplicação de descontos ao perfil de gerente.
-- Restrição da consulta aos registros de auditoria aos perfis de administrador e gerente.
+- Autenticação de usuários utilizando Spring Security.
+- Controle de acesso conforme o perfil do usuário.
+- Perfis: ADMIN, GERENTE e ATENDENTE.
+- Restrição de operações conforme as permissões.
+- Restrição da consulta aos registros de auditoria aos perfis ADMIN e GERENTE.
 
-### 5. Auditoria 
+### 5. Auditoria
 
 - Registro da criação de pedidos.
-- Registro das alterações de status dos pedidos.
-- Registro de aplicação de descontos e cancelamento de pedidos.
-- Registro da criação e das alterações dos dados dos clientes.
-- Registro de valores anteriores e novos dos campos alterados, quando aplicável.
-- Registro da justificativa de cancelamento.
+- Registro das alterações de status.
+- Registro de descontos e cancelamentos.
+- Registro da criação e alteração de clientes.
+- Registro de valores anteriores e novos dos campos alterados.
+- Registro das justificativas de cancelamento.
 
-### 6. Testes 
+### 6. Dashboard Administrativo
 
-- Testes das regras de negócio relacionadas aos pedidos.
-- Testes de autorização para consulta dos registros de auditoria.
-- Validação das regras de transição de status, cancelamento e aplicação de descontos.
+- Indicadores gerais de vendas.
+- Gráficos de faturamento e pedidos finalizados.
+- Visualização da situação dos pedidos.
+- Ranking dos produtos mais vendidos.
+- Filtros por período.
+- Integração com a API.
+- Atualização dos dados e tratamento de erros.
+
 
 ## Configuração do banco de dados
 
