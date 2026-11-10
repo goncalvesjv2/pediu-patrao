@@ -3,6 +3,7 @@ package com.umc.pediupatrao.service;
 import com.umc.pediupatrao.dto.DashboardDTO;
 import com.umc.pediupatrao.dto.DashboardStatusDTO;
 import com.umc.pediupatrao.dto.DashboardVendasDTO;
+import com.umc.pediupatrao.dto.DashboardProdutosDTO;
 import com.umc.pediupatrao.entity.Pedido;
 import com.umc.pediupatrao.entity.StatusPedido;
 import com.umc.pediupatrao.repository.PedidoRepository;
@@ -12,6 +13,8 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import com.umc.pediupatrao.entity.ItemPedido;
+import java.util.Comparator;
 
 @Service
 public class DashboardService {
@@ -197,6 +200,77 @@ public class DashboardService {
             }
 
             return resultado;
+        }
+
+        // Produtos mais vendidos
+        public List<DashboardProdutosDTO> obterProdutosMaisVendidos(LocalDate inicio, LocalDate fim) {
+            if ((inicio == null) != (fim == null)) {
+                throw new IllegalArgumentException(
+                        "Informe a data inicial e a data final."
+                );
+            }
+
+            if (inicio != null && inicio.isAfter(fim)) {
+                throw new IllegalArgumentException(
+                        "A data inicial não pode ser posterior à data final."
+                );
+            }
+
+            List<Pedido> pedidos = pedidoRepository.findAll();
+            Map<String, Long> quantidadePorProduto = new HashMap<>();
+            Map<String, String> nomePorProduto = new HashMap<>();
+
+            for (Pedido pedido : pedidos) {
+                if (pedido.getStatus() != StatusPedido.FINALIZADO) {
+                    continue;
+                }
+
+                if (inicio != null) {
+                    LocalDateTime dataPedido = pedido.getHorarioEntrada();
+
+                    if (dataPedido == null ||
+                            dataPedido.toLocalDate().isBefore(inicio) ||
+                            dataPedido.toLocalDate().isAfter(fim)) {
+                        continue;
+                    }
+                }
+
+                if (pedido.getItens() == null) {
+                    continue;
+                }
+
+                for (ItemPedido item : pedido.getItens()) {
+
+                    if (item == null || item.getProdutoId() == null || item.getProdutoId().isBlank() || item.getQuantidade() <= 0) {
+                        continue;
+                    }
+
+                    String produtoId = item.getProdutoId();
+                    String nomeProduto = item.getNomeProduto();
+
+                    if (nomeProduto == null || nomeProduto.isBlank()) {
+                        nomeProduto = "Produto sem nome";
+                    }
+
+                    quantidadePorProduto.merge(
+                            produtoId,
+                            (long) item.getQuantidade(),
+                            Long::sum
+                    );
+
+                    nomePorProduto.putIfAbsent(
+                            produtoId,
+                            nomeProduto
+                    );
+                }
+            }
+
+            return quantidadePorProduto.entrySet()
+                    .stream()
+                    .map(entrada -> new DashboardProdutosDTO(entrada.getKey(), nomePorProduto.get(entrada.getKey()), entrada.getValue()))
+                    .sorted(Comparator.comparingLong(DashboardProdutosDTO::quantidadeVendida).reversed().thenComparing(DashboardProdutosDTO::produtoId))
+                    .limit(5)
+                    .toList();
         }
 
     private double arredondar(double valor) {
