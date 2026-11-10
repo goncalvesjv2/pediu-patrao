@@ -1,6 +1,7 @@
 package com.umc.pediupatrao.service;
 
 import com.umc.pediupatrao.dto.DashboardDTO;
+import com.umc.pediupatrao.dto.DashboardStatusDTO;
 import com.umc.pediupatrao.dto.DashboardVendasDTO;
 import com.umc.pediupatrao.entity.Pedido;
 import com.umc.pediupatrao.entity.StatusPedido;
@@ -452,6 +453,120 @@ class DashboardServiceTest {
             when(pedidoRepository.findAll()).thenThrow(falha);
             RuntimeException erro = assertThrows(RuntimeException.class, () -> dashboardService.obterVendasPorDia(inicio, fim));
             assertSame(falha, erro);
+        }
+    }
+
+    @Nested
+    class SituacaoPedidosTest {
+        private Pedido criarPedido(StatusPedido status, LocalDateTime data) {
+            Pedido pedido = new Pedido();
+            pedido.setStatus(status);
+            pedido.setHorarioEntrada(data);
+            return pedido;
+        }
+
+        private long obterQuantidade(List<DashboardStatusDTO> resultado, StatusPedido status) {
+            return resultado.stream()
+                    .filter(dto -> dto.status() == status)
+                    .findFirst()
+                    .orElseThrow()
+                    .quantidade();
+        }
+
+        @Test
+        void deveRetornarTodosOsStatusZeradosQuandoNaoExistemPedidos() {
+            when(pedidoRepository.findAll()).thenReturn(List.of());
+            List<DashboardStatusDTO> resultado = dashboardService.obterSituacaoPedidos(null, null);
+            assertEquals(StatusPedido.values().length, resultado.size());
+
+            for (DashboardStatusDTO dto : resultado) {
+                assertEquals(0L, dto.quantidade());
+            }
+
+            verify(pedidoRepository).findAll();
+        }
+
+        @Test
+        void deveContarPedidosPorStatusCorretamente() {
+            Pedido pedido1 = criarPedido(StatusPedido.RECEBIDO, LocalDateTime.of(2026, 11, 1, 10, 0));
+            Pedido pedido2 = criarPedido(StatusPedido.RECEBIDO, LocalDateTime.of(2026, 11, 2, 11, 0));
+            Pedido pedido3 = criarPedido(StatusPedido.FINALIZADO, LocalDateTime.of(2026, 11, 3, 12, 0));
+            Pedido pedido4 = criarPedido(StatusPedido.CANCELADO, LocalDateTime.of(2026, 11, 4, 13, 0));
+
+            when(pedidoRepository.findAll()).thenReturn(List.of(pedido1, pedido2, pedido3, pedido4));
+            List<DashboardStatusDTO> resultado = dashboardService.obterSituacaoPedidos(null, null);
+
+            assertEquals(2L, obterQuantidade(resultado, StatusPedido.RECEBIDO));
+            assertEquals(1L, obterQuantidade(resultado, StatusPedido.FINALIZADO));
+            assertEquals(1L, obterQuantidade(resultado, StatusPedido.CANCELADO));
+            assertEquals(0L, obterQuantidade(resultado, StatusPedido.EM_PREPARO));
+        }
+
+        @Test
+        void deveFiltrarPedidosPeloPeriodoInformado() {
+            LocalDate inicio = LocalDate.of(2026, 11, 1);
+            LocalDate fim = LocalDate.of(2026, 11, 10);
+
+            Pedido pedido1 = criarPedido(StatusPedido.FINALIZADO, LocalDateTime.of(2026, 11, 1, 0, 0));
+            Pedido pedido2 = criarPedido(StatusPedido.FINALIZADO, LocalDateTime.of(2026, 11, 10, 23, 59));
+            Pedido pedido3 = criarPedido(StatusPedido.CANCELADO, LocalDateTime.of(2026, 10, 31, 12, 0));
+            Pedido pedido4 = criarPedido(StatusPedido.RECEBIDO, LocalDateTime.of(2026, 11, 11, 12, 0));
+
+            when(pedidoRepository.findAll()).thenReturn(List.of(pedido1, pedido2, pedido3, pedido4));
+            List<DashboardStatusDTO> resultado = dashboardService.obterSituacaoPedidos(inicio, fim);
+
+            assertEquals(2L, obterQuantidade(resultado, StatusPedido.FINALIZADO));
+            assertEquals(0L, obterQuantidade(resultado, StatusPedido.CANCELADO));
+            assertEquals(0L, obterQuantidade(resultado, StatusPedido.RECEBIDO));
+        }
+
+        @Test
+        void deveIgnorarPedidoSemDataQuandoExisteFiltro() {
+            Pedido pedido = criarPedido(StatusPedido.RECEBIDO, null);
+            when(pedidoRepository.findAll()).thenReturn(List.of(pedido));
+
+            List<DashboardStatusDTO> resultado = dashboardService.obterSituacaoPedidos(
+                    LocalDate.of(2026, 11, 1),
+                    LocalDate.of(2026, 11, 10)
+            );
+
+            assertEquals(0L, obterQuantidade(resultado, StatusPedido.RECEBIDO));
+        }
+
+        @Test
+        void deveRejeitarQuandoApenasDataInicialFoiInformada() {
+            IllegalArgumentException erro = assertThrows(IllegalArgumentException.class, () -> dashboardService.obterSituacaoPedidos(LocalDate.of(2026, 11, 1), null));
+            assertEquals("Informe a data inicial e a data final.", erro.getMessage());
+            verifyNoInteractions(pedidoRepository);
+        }
+
+        @Test
+        void deveRejeitarQuandoApenasDataFinalFoiInformada() {
+            IllegalArgumentException erro = assertThrows(IllegalArgumentException.class, () -> dashboardService.obterSituacaoPedidos(null, LocalDate.of(2026, 11, 10)));
+            assertEquals("Informe a data inicial e a data final.", erro.getMessage());
+            verifyNoInteractions(pedidoRepository);
+        }
+
+        @Test
+        void deveRejeitarPeriodoComDatasInvertidas() {
+            IllegalArgumentException erro = assertThrows(IllegalArgumentException.class, () -> dashboardService.obterSituacaoPedidos(
+                    LocalDate.of(2026, 11, 10),
+                    LocalDate.of(2026, 11, 1))
+            );
+
+            assertEquals("A data inicial não pode ser posterior à data final.", erro.getMessage());
+            verifyNoInteractions(pedidoRepository);
+        }
+
+        @Test
+        void deveIgnorarPedidosSemStatus() {
+            Pedido pedido = criarPedido(null, LocalDateTime.of(2026, 11, 5, 10, 0));
+            when(pedidoRepository.findAll()).thenReturn(List.of(pedido));
+            List<DashboardStatusDTO> resultado = dashboardService.obterSituacaoPedidos(null, null);
+
+            for (DashboardStatusDTO dto : resultado) {
+                assertEquals(0L, dto.quantidade());
+            }
         }
     }
 }
