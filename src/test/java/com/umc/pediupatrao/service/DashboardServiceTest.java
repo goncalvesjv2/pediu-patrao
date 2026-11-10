@@ -1,9 +1,11 @@
 package com.umc.pediupatrao.service;
 
 import com.umc.pediupatrao.dto.DashboardDTO;
+import com.umc.pediupatrao.dto.DashboardVendasDTO;
 import com.umc.pediupatrao.entity.Pedido;
 import com.umc.pediupatrao.entity.StatusPedido;
 import com.umc.pediupatrao.repository.PedidoRepository;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -316,5 +318,140 @@ class DashboardServiceTest {
         RuntimeException erro = assertThrows(RuntimeException.class, () -> dashboardService.obterResumo());
         assertSame(falha, erro);
         verify(pedidoRepository).findAll();
+    }
+
+    @Nested
+    class AnaliseVendasPorDia {
+        private final LocalDate inicio = LocalDate.of(2026, 11, 1);
+        private final LocalDate fim = LocalDate.of(2026, 11, 3);
+
+        private Pedido criarPedidoVendas(StatusPedido status, double valor, LocalDateTime horarioEntrada) {
+            Pedido pedido = new Pedido();
+            pedido.setStatus(status);
+            pedido.setValorTotal(valor);
+            pedido.setHorarioEntrada(horarioEntrada);
+            return pedido;
+        }
+
+        @Test
+        void deveCalcularVendasPorDia() {
+            Pedido pedido1 = criarPedidoVendas(StatusPedido.FINALIZADO, 50.0, inicio.atTime(10, 0));
+            Pedido pedido2 = criarPedidoVendas(StatusPedido.FINALIZADO, 80.0, inicio.atTime(15, 0));
+            Pedido pedido3 = criarPedidoVendas(StatusPedido.FINALIZADO, 100.0, inicio.plusDays(1).atTime(12, 0));
+
+            when(pedidoRepository.findAll()).thenReturn(List.of(pedido1, pedido2, pedido3));
+            List<DashboardVendasDTO> resultado = dashboardService.obterVendasPorDia(inicio, fim);
+
+            assertEquals(3, resultado.size());
+            assertEquals(inicio, resultado.get(0).data());
+            assertEquals(2L, resultado.get(0).pedidosFinalizados());
+            assertEquals(130.0, resultado.get(0).faturamento(), 0.001);
+            assertEquals(inicio.plusDays(1), resultado.get(1).data());
+            assertEquals(1L, resultado.get(1).pedidosFinalizados());
+            assertEquals(100.0, resultado.get(1).faturamento(), 0.001);
+            assertEquals(inicio.plusDays(2), resultado.get(2).data());
+            assertEquals(0L, resultado.get(2).pedidosFinalizados());
+            assertEquals(0.0, resultado.get(2).faturamento(), 0.001);
+            verify(pedidoRepository).findAll();
+        }
+
+        @Test
+        void deveIgnorarPedidosNaoFinalizados() {
+            Pedido cancelado = criarPedidoVendas(StatusPedido.CANCELADO, 100.0, inicio.atTime(10, 0));
+            Pedido recebido = criarPedidoVendas(StatusPedido.RECEBIDO, 50.0, inicio.atTime(11, 0));
+            Pedido emPreparo = criarPedidoVendas(StatusPedido.EM_PREPARO, 80.0, inicio.atTime(12, 0));
+            when(pedidoRepository.findAll()).thenReturn(List.of(cancelado, recebido, emPreparo));
+            List<DashboardVendasDTO> resultado = dashboardService.obterVendasPorDia(inicio, inicio);
+            assertEquals(1, resultado.size());
+            assertEquals(0L, resultado.get(0).pedidosFinalizados());
+            assertEquals(0.0, resultado.get(0).faturamento(), 0.001);
+        }
+
+        @Test
+        void deveRetornarZeroQuandoNaoExistiremVendas() {
+            when(pedidoRepository.findAll()).thenReturn(List.of());
+            List<DashboardVendasDTO> resultado = dashboardService.obterVendasPorDia(inicio, fim);
+            assertEquals(3, resultado.size());
+
+            for (DashboardVendasDTO venda : resultado) {
+                assertEquals(0L, venda.pedidosFinalizados());
+                assertEquals(0.0, venda.faturamento(), 0.001);
+            }
+        }
+
+        @Test
+        void deveIgnorarVendasForaDoPeriodo() {
+            Pedido anterior = criarPedidoVendas(StatusPedido.FINALIZADO, 100.0, inicio.minusDays(1).atTime(12, 0));
+            Pedido dentro = criarPedidoVendas(StatusPedido.FINALIZADO, 75.0, inicio.atTime(12, 0));
+            Pedido posterior = criarPedidoVendas(StatusPedido.FINALIZADO, 200.0, fim.plusDays(1).atTime(12, 0));
+            when(pedidoRepository.findAll()).thenReturn(List.of(anterior, dentro, posterior));
+            List<DashboardVendasDTO> resultado = dashboardService.obterVendasPorDia(inicio, fim);
+            assertEquals(3, resultado.size());
+            assertEquals(1L, resultado.get(0).pedidosFinalizados());
+            assertEquals(75.0, resultado.get(0).faturamento(), 0.001);
+            assertEquals(0.0, resultado.get(1).faturamento(), 0.001);
+            assertEquals(0.0, resultado.get(2).faturamento(), 0.001);
+        }
+
+        @Test
+        void deveIgnorarPedidoSemData() {
+            Pedido semData = criarPedidoVendas(StatusPedido.FINALIZADO, 100.0, null);
+            Pedido comData = criarPedidoVendas(StatusPedido.FINALIZADO, 60.0, inicio.atTime(10, 0));
+            when(pedidoRepository.findAll()).thenReturn(List.of(semData, comData));
+            List<DashboardVendasDTO> resultado = dashboardService.obterVendasPorDia(inicio, inicio);
+            assertEquals(1L, resultado.get(0).pedidosFinalizados());
+            assertEquals(60.0, resultado.get(0).faturamento(), 0.001);
+        }
+
+        @Test
+        void deveConsiderarValorComDesconto() {
+            Pedido pedido = criarPedidoVendas(StatusPedido.FINALIZADO, 90.0, inicio.atTime(10, 0));
+            pedido.setPercentualDesconto(10.0);
+            pedido.setValorDesconto(10.0);
+            when(pedidoRepository.findAll()).thenReturn(List.of(pedido));
+            List<DashboardVendasDTO> resultado = dashboardService.obterVendasPorDia(inicio, inicio);
+            assertEquals(90.0, resultado.get(0).faturamento(), 0.001);
+        }
+
+        @Test
+        void deveArredondarFaturamento() {
+            Pedido pedido = criarPedidoVendas(StatusPedido.FINALIZADO, 10.005, inicio.atTime(10, 0));
+            when(pedidoRepository.findAll()).thenReturn(List.of(pedido));
+            List<DashboardVendasDTO> resultado = dashboardService.obterVendasPorDia(inicio, inicio);
+            assertEquals(10.01, resultado.get(0).faturamento(), 0.001);
+        }
+
+        @Test
+        void deveRejeitarPeriodoInvertido() {
+            IllegalArgumentException erro = assertThrows(IllegalArgumentException.class, () -> dashboardService.obterVendasPorDia(fim, inicio));
+            assertEquals("A data inicial não pode ser posterior à data final.",  erro.getMessage());
+            verifyNoInteractions(pedidoRepository);
+        }
+
+        @Test
+        void deveExigirAsDuasDatas() {
+            assertThrows(IllegalArgumentException.class, () -> dashboardService.obterVendasPorDia(inicio, null));
+            assertThrows(IllegalArgumentException.class, () -> dashboardService.obterVendasPorDia(null, fim));
+            verifyNoInteractions(pedidoRepository);
+        }
+
+        @Test
+        void deveConsiderarSeteDiasSemFiltros() {
+            when(pedidoRepository.findAll()).thenReturn(List.of());
+            List<DashboardVendasDTO> resultado = dashboardService.obterVendasPorDia(null, null);
+            assertEquals(7, resultado.size());
+            LocalDate primeiroDia = resultado.get(0).data();
+            LocalDate ultimoDia = resultado.get(6).data();
+            assertEquals(primeiroDia.plusDays(6), ultimoDia);
+            verify(pedidoRepository).findAll();
+        }
+
+        @Test
+        void deveRetornarErroQuandoRepositorioFalhar() {
+            RuntimeException falha = new RuntimeException("Erro ao consultar pedidos");
+            when(pedidoRepository.findAll()).thenThrow(falha);
+            RuntimeException erro = assertThrows(RuntimeException.class, () -> dashboardService.obterVendasPorDia(inicio, fim));
+            assertSame(falha, erro);
+        }
     }
 }
