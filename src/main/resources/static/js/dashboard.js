@@ -7,6 +7,8 @@ const mensagem = document.getElementById("mensagemDashboard");
 const mensagemGraficos = document.getElementById("mensagemGraficos");
 let graficoFaturamento = null;
 let graficoPedidos = null;
+const mensagemStatus = document.getElementById("mensagemStatus");
+let graficoStatus = null;
 
 const formatadorMoeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL"});
 
@@ -71,36 +73,29 @@ async function carregarGraficos(inicio, fim) {
         }
 
         graficoFaturamento = new Chart(
-            document.getElementById("graficoFaturamento"),
-            {
+            document.getElementById("graficoFaturamento"), {
                 type: "bar",
-
                 data: {
                     labels: datas,
-
                     datasets: [{
                         label: "Faturamento",
                         data: faturamentos,
                         backgroundColor: "#6c757d"
                     }]
                 },
-
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-
                     plugins: {
                         legend: {
                             display: false
                         },
-
                         tooltip: {
                             callbacks: {
                                 label: contexto => formatadorMoeda.format(contexto.parsed.y)
                             }
                         }
                     },
-
                     scales: {
                         y: {
                             beginAtZero: true
@@ -111,13 +106,10 @@ async function carregarGraficos(inicio, fim) {
         );
 
         graficoPedidos = new Chart(
-            document.getElementById("graficoPedidos"),
-            {
+            document.getElementById("graficoPedidos"), {
                 type: "line",
-
                 data: {
                     labels: datas,
-
                     datasets: [{
                         label: "Pedidos finalizados",
                         data: pedidos,
@@ -126,17 +118,14 @@ async function carregarGraficos(inicio, fim) {
                         tension: 0.3
                     }]
                 },
-
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-
                     plugins: {
                         legend: {
                             display: false
                         }
                     },
-
                     scales: {
                         y: {
                             beginAtZero: true,
@@ -167,6 +156,161 @@ async function carregarGraficos(inicio, fim) {
             mensagemGraficos.textContent = "Não foi possível conectar ao servidor.";
         } else {
             mensagemGraficos.textContent = erro.message;
+        }
+    }
+}
+
+async function carregarSituacaoPedidos(inicio, fim) {
+    const url = new URL(
+        `${dashboard.dataset.apiUrl}/status`,
+        window.location.origin
+    );
+
+    if (inicio) {
+        url.searchParams.set("inicio", inicio);
+    }
+
+    if (fim) {
+        url.searchParams.set("fim", fim);
+    }
+
+    mensagemStatus.className = "d-none";
+    mensagemStatus.textContent = "";
+
+    try {
+        const resposta = await fetch(url, {
+            credentials: "same-origin",
+            headers: {
+                "Accept": "application/json"
+            },
+            cache: "no-store"
+        });
+
+        const tipoResposta =
+            resposta.headers.get("content-type") || "";
+
+        if (!tipoResposta.includes("application/json")) {
+            throw new Error(
+                "Não foi possível obter os dados. Verifique sua sessão."
+            );
+        }
+
+        const dados = await resposta.json();
+
+        if (!resposta.ok) {
+            throw new Error(
+                dados.erro || "Erro ao consultar a situação dos pedidos."
+            );
+        }
+
+        if (!Array.isArray(dados)) {
+            throw new Error("Formato de dados inválido.");
+        }
+
+        if (typeof Chart === "undefined") {
+            throw new Error("A biblioteca Chart.js não foi carregada.");
+        }
+
+        const canvas = document.getElementById("graficoStatus");
+
+        if (!canvas) {
+            throw new Error("O elemento do gráfico não foi encontrado.");
+        }
+
+        const nomesStatus = {
+            RECEBIDO: "Recebido",
+            EM_PREPARO: "Em preparo",
+            PRONTO: "Pronto",
+            SAIU_PARA_ENTREGA: "Saiu para entrega",
+            FINALIZADO: "Finalizado",
+            CANCELADO: "Cancelado"
+        };
+
+        const coresStatus = {
+            RECEBIDO: "#0d6efd",
+            EM_PREPARO: "#ffc107",
+            PRONTO: "#17a2b8",
+            SAIU_PARA_ENTREGA: "#6f42c1",
+            FINALIZADO: "#198754",
+            CANCELADO: "#dc3545"
+        };
+
+        const nomes = dados.map(item =>
+            nomesStatus[item.status] || item.status
+        );
+
+        const quantidades = dados.map(item =>
+            item.quantidade
+        );
+
+        const cores = dados.map(item =>
+            coresStatus[item.status] || "#6c757d"
+        );
+
+        if (graficoStatus !== null) {
+            graficoStatus.destroy();
+            graficoStatus = null;
+        }
+
+        graficoStatus = new Chart(canvas, {
+            type: "doughnut",
+            data: {
+                labels: nomes,
+                datasets: [{
+                    label: "Quantidade de pedidos",
+                    data: quantidades,
+                    backgroundColor: cores,
+                    borderColor: "#ffffff",
+                    borderWidth: 2
+                }]
+            },
+
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: "60%",
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: "bottom"
+                    },
+
+                    tooltip: {
+                        callbacks: {
+                            label: contexto => {
+                                return `${contexto.label}: ${contexto.parsed} pedido(s)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const semPedidos = dados.every(
+            item => item.quantidade === 0
+        );
+
+        if (semPedidos) {
+            mensagemStatus.className = "alert alert-info mb-3";
+            mensagemStatus.textContent = "Nenhum pedido encontrado no período.";
+
+        } else {
+            mensagemStatus.className = "d-none";
+            mensagemStatus.textContent = "";
+        }
+
+    } catch (erro) {
+        if (graficoStatus !== null) {
+            graficoStatus.destroy();
+            graficoStatus = null;
+        }
+
+        mensagemStatus.className = "alert alert-danger mb-3";
+
+        if (erro instanceof TypeError) {
+            mensagemStatus.textContent = "Não foi possível conectar ao servidor.";
+        } else {
+            mensagemStatus.textContent = erro.message;
         }
     }
 }
@@ -214,6 +358,7 @@ async function carregarDashboard() {
 
         atualizarIndicadores(dados);
         await carregarGraficos(inicio, fim);
+        await carregarSituacaoPedidos(inicio, fim);
 
         mensagem.className = "d-none";
         mensagem.textContent = "";

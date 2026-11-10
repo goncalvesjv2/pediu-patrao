@@ -138,6 +138,29 @@
                     </div>
                 </div>
             </div>
+
+            <h4 class="mt-5 mb-3">
+                Situação dos pedidos
+            </h4>
+
+            <div id="mensagemStatus" class="d-none" role="status" aria-live="polite"></div>
+
+            <div class="row g-3">
+                <div class="col-lg-6">
+                    <div class="card dashboard-grafico">
+                        <div class="card-body">
+                            <h5 class="card-title mb-4">
+                                <i class="bi bi-pie-chart"></i>
+                                Pedidos por situação
+                            </h5>
+
+                            <div class="grafico-container">
+                                <canvas id="graficoStatus"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
         <script defer th:src="@{/js/dashboard.js}"></script>
