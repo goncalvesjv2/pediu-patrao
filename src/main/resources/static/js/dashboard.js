@@ -60,7 +60,11 @@ async function carregarDashboard() {
 
     } catch (erro) {
         mensagem.className = "alert alert-danger mb-3";
-        mensagem.textContent = erro.message;
+        if (erro instanceof TypeError) {
+            mensagem.textContent = "Não foi possível conectar ao servidor."
+        } else {
+            mensagem.textContent = erro.message;
+        }
     } finally {
         botaoFiltrar.disabled = false;
         botaoAtualizar.disabled = false;
