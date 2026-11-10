@@ -1,6 +1,7 @@
 package com.umc.pediupatrao.service;
 
 import com.umc.pediupatrao.dto.DashboardDTO;
+import com.umc.pediupatrao.dto.DashboardVendasDTO;
 import com.umc.pediupatrao.entity.Pedido;
 import com.umc.pediupatrao.entity.StatusPedido;
 import com.umc.pediupatrao.repository.PedidoRepository;
@@ -9,7 +10,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class DashboardService {
@@ -79,7 +83,73 @@ public class DashboardService {
                 arredondar(faturamento),
                 arredondar(ticketMedio)
         );
+
     }
+        // Dashboard de vendas
+        public List<DashboardVendasDTO> obterVendasPorDia (LocalDate inicio, LocalDate fim){
+            if ((inicio == null) != (fim == null)) {
+                throw new IllegalArgumentException("Informe a data inicial e a data final.");
+            }
+
+            if (inicio == null) {
+                fim = LocalDate.now();
+                inicio = fim.minusDays(6);
+            }
+
+            if (inicio.isAfter(fim)) {
+                throw new IllegalArgumentException("A data inicial não pode ser posterior à data final.");
+            }
+
+            Map<LocalDate, Long> pedidosPorDia = new HashMap<>();
+            Map<LocalDate, BigDecimal> faturamentoPorDia = new HashMap<>();
+            List<Pedido> pedidos = pedidoRepository.findAll();
+
+            for (Pedido pedido : pedidos) {
+                if (pedido.getStatus() != StatusPedido.FINALIZADO) {
+                    continue;
+                }
+
+                if (pedido.getHorarioEntrada() == null) {
+                    continue;
+                }
+
+                LocalDate dataPedido = pedido.getHorarioEntrada().toLocalDate();
+
+                if (dataPedido.isBefore(inicio) ||
+                        dataPedido.isAfter(fim)) {
+                    continue;
+                }
+
+                pedidosPorDia.merge(
+                        dataPedido,
+                        1L,
+                        Long::sum
+                );
+
+                faturamentoPorDia.merge(
+                        dataPedido,
+                        BigDecimal.valueOf(pedido.getValorTotal()),
+                        BigDecimal::add
+                );
+            }
+
+            List<DashboardVendasDTO> resultado = new ArrayList<>();
+
+            for (LocalDate data = inicio;
+                 !data.isAfter(fim);
+                 data = data.plusDays(1)) {
+
+                long quantidade = pedidosPorDia.getOrDefault(data, 0L);
+
+                BigDecimal faturamento = faturamentoPorDia.getOrDefault(data, BigDecimal.ZERO);
+
+                double valorArredondado = faturamento.setScale(2, RoundingMode.HALF_UP).doubleValue();
+
+                resultado.add(new DashboardVendasDTO(data, quantidade, valorArredondado));
+            }
+
+            return resultado;
+        }
 
     private double arredondar(double valor) {
         return BigDecimal.valueOf(valor).setScale(2, RoundingMode.HALF_UP).doubleValue();

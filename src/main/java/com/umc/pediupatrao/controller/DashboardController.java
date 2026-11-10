@@ -1,12 +1,14 @@
 package com.umc.pediupatrao.controller;
 
 import com.umc.pediupatrao.dto.DashboardDTO;
+import com.umc.pediupatrao.dto.DashboardVendasDTO;
 import com.umc.pediupatrao.service.DashboardService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -30,6 +32,21 @@ public class DashboardController {
     ) {
         DashboardDTO resumo = dashboardService.obterResumo(inicio, fim);
         return ResponseEntity.ok(resumo);
+    }
+
+    @GetMapping("/vendas")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
+    public ResponseEntity<List<DashboardVendasDTO>> obterVendas(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate inicio,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate fim
+    ) {
+
+        List<DashboardVendasDTO> vendas = dashboardService.obterVendasPorDia(inicio, fim);
+        return ResponseEntity.ok(vendas);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
