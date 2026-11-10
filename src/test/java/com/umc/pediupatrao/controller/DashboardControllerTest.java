@@ -2,6 +2,7 @@ package com.umc.pediupatrao.controller;
 
 import com.umc.pediupatrao.config.SecurityConfig;
 import com.umc.pediupatrao.dto.DashboardDTO;
+import com.umc.pediupatrao.dto.DashboardVendasDTO;
 import com.umc.pediupatrao.service.DashboardService;
 import com.umc.pediupatrao.service.UsuarioDetailsService;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
+import java.util.List;
+
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -210,6 +213,96 @@ class DashboardControllerTest {
     @Test
     void deveRetornar404ParaEndpointResumoAntigo() throws Exception {
         mockMvc.perform(get("/api/dashboard/resumo").with(user("admin").roles("ADMIN"))).andExpect(status().isNotFound());
+        verifyNoInteractions(dashboardService);
+    }
+
+    @Test
+    void devePermitirConsultaDeVendasParaAdmin() throws Exception {
+        DashboardVendasDTO venda = new DashboardVendasDTO(LocalDate.of(2026, 11, 1), 2L, 150.50);
+        when(dashboardService.obterVendasPorDia(null, null)).thenReturn(List.of(venda));
+        mockMvc.perform(get("/api/dashboard/vendas").with(user("admin").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$[0].data").value("2026-11-01"))
+                .andExpect(jsonPath("$[0].pedidosFinalizados").value(2))
+                .andExpect(jsonPath("$[0].faturamento").value(150.50));
+
+        verify(dashboardService).obterVendasPorDia(null, null);
+    }
+
+    @Test
+    void devePermitirConsultaDeVendasParaGerente() throws Exception {
+        when(dashboardService.obterVendasPorDia(null, null)).thenReturn(List.of());
+        mockMvc.perform(get("/api/dashboard/vendas").with(user("gerente").roles("GERENTE"))).andExpect(status().isOk());
+        verify(dashboardService).obterVendasPorDia(null, null);
+    }
+
+    @Test
+    void deveAplicarFiltrosNaConsultaDeVendas() throws Exception {
+        LocalDate inicio = LocalDate.of(2026, 11, 1);
+        LocalDate fim = LocalDate.of(2026, 11, 3);
+        DashboardVendasDTO venda = new DashboardVendasDTO(inicio, 3L, 200.0);
+        when(dashboardService.obterVendasPorDia(inicio, fim)).thenReturn(List.of(venda));
+        mockMvc.perform(get("/api/dashboard/vendas").with(user("admin").roles("ADMIN")).param("inicio", "2026-11-01").param("fim", "2026-11-03"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].data").value("2026-11-01"))
+                .andExpect(jsonPath("$[0].pedidosFinalizados").value(3))
+                .andExpect(jsonPath("$[0].faturamento").value(200.0));
+
+        verify(dashboardService).obterVendasPorDia(inicio, fim);
+    }
+
+    @Test
+    void deveRetornarListaVaziaQuandoNaoExistiremVendas() throws Exception {
+        when(dashboardService.obterVendasPorDia(null, null)).thenReturn(List.of());
+        mockMvc.perform(get("/api/dashboard/vendas").with(user("admin").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void deveNegarConsultaDeVendasParaAtendente() throws Exception {
+        mockMvc.perform(get("/api/dashboard/vendas").with(user("atendente").roles("ATENDENTE"))).andExpect(status().isForbidden());
+        verifyNoInteractions(dashboardService);
+    }
+
+    @Test
+    void deveExigirAutenticacaoParaConsultarVendas() throws Exception {
+        mockMvc.perform(get("/api/dashboard/vendas")).andExpect(status().is3xxRedirection());
+        verifyNoInteractions(dashboardService);
+    }
+
+    @Test
+    void deveRejeitarConsultaDeVendasComSomenteDataInicial() throws Exception {
+        LocalDate inicio = LocalDate.of(2026, 11, 1);
+        when(dashboardService.obterVendasPorDia(inicio, null)).thenThrow(new IllegalArgumentException("Informe a data inicial e a data final."));
+        mockMvc.perform(get("/api/dashboard/vendas").with(user("admin").roles("ADMIN")).param("inicio", "2026-11-01"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("Informe a data inicial e a data final."));
+    }
+
+    @Test
+    void deveRejeitarConsultaDeVendasComSomenteDataFinal() throws Exception {
+        LocalDate fim = LocalDate.of(2026, 11, 3);
+        when(dashboardService.obterVendasPorDia(null, fim)).thenThrow(new IllegalArgumentException("Informe a data inicial e a data final."));
+        mockMvc.perform(get("/api/dashboard/vendas").with(user("admin").roles("ADMIN")).param("fim", "2026-11-03"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("Informe a data inicial e a data final."));
+    }
+
+    @Test
+    void deveRejeitarConsultaDeVendasComPeriodoInvertido() throws Exception {
+        LocalDate inicio = LocalDate.of(2026, 11, 10);
+        LocalDate fim = LocalDate.of(2026, 11, 1);
+        when(dashboardService.obterVendasPorDia(inicio, fim)).thenThrow(new IllegalArgumentException("A data inicial não pode ser posterior à data final."));
+        mockMvc.perform(get("/api/dashboard/vendas").with(user("admin").roles("ADMIN")).param("inicio", "2026-11-10").param("fim", "2026-11-01"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("A data inicial não pode ser posterior à data final."));
+    }
+
+    @Test
+    void deveRejeitarConsultaDeVendasComDataInvalida() throws Exception {
+        mockMvc.perform(get("/api/dashboard/vendas").with(user("admin").roles("ADMIN")).param("inicio", "data-invalida").param("fim", "2026-11-03")).andExpect(status().isBadRequest());
         verifyNoInteractions(dashboardService);
     }
 }
