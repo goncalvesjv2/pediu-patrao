@@ -1,6 +1,7 @@
 package com.umc.pediupatrao.controller;
 
 import com.umc.pediupatrao.dto.DashboardDTO;
+import com.umc.pediupatrao.dto.DashboardProdutosDTO;
 import com.umc.pediupatrao.dto.DashboardVendasDTO;
 import com.umc.pediupatrao.dto.DashboardStatusDTO;
 import com.umc.pediupatrao.service.DashboardService;
@@ -64,6 +65,23 @@ public class DashboardController {
 
         List<DashboardStatusDTO> situacao = dashboardService.obterSituacaoPedidos(inicio, fim);
         return ResponseEntity.ok(situacao);
+    }
+
+    // RF04 - Produtos mais vendidos
+    @GetMapping("/produtos")
+    @PreAuthorize("hasAnyRole('ADMIN', 'GERENTE')")
+    public ResponseEntity<List<DashboardProdutosDTO>> obterProdutosMaisVendidos(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate inicio,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate fim
+    ) {
+
+        List<DashboardProdutosDTO> produtos = dashboardService.obterProdutosMaisVendidos(inicio, fim);
+        return ResponseEntity.ok(produtos);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
