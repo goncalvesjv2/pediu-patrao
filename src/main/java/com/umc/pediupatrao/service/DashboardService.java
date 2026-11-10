@@ -1,6 +1,7 @@
 package com.umc.pediupatrao.service;
 
 import com.umc.pediupatrao.dto.DashboardDTO;
+import com.umc.pediupatrao.dto.DashboardStatusDTO;
 import com.umc.pediupatrao.dto.DashboardVendasDTO;
 import com.umc.pediupatrao.entity.Pedido;
 import com.umc.pediupatrao.entity.StatusPedido;
@@ -10,10 +11,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class DashboardService {
@@ -146,6 +144,56 @@ public class DashboardService {
                 double valorArredondado = faturamento.setScale(2, RoundingMode.HALF_UP).doubleValue();
 
                 resultado.add(new DashboardVendasDTO(data, quantidade, valorArredondado));
+            }
+
+            return resultado;
+        }
+
+        // Situação dos pedidos
+        public List<DashboardStatusDTO> obterSituacaoPedidos(LocalDate inicio, LocalDate fim) {
+            if ((inicio == null) != (fim == null)) {
+                throw new IllegalArgumentException(
+                        "Informe a data inicial e a data final."
+                );
+            }
+
+            if (inicio != null && inicio.isAfter(fim)) {
+                throw new IllegalArgumentException(
+                        "A data inicial não pode ser posterior à data final."
+                );
+            }
+
+            List<Pedido> pedidos = pedidoRepository.findAll();
+
+            Map<StatusPedido, Long> quantidadePorStatus = new EnumMap<>(StatusPedido.class);
+
+            for (StatusPedido status : StatusPedido.values()) {
+                quantidadePorStatus.put(status, 0L);
+            }
+
+            for (Pedido pedido : pedidos) {
+                if (inicio != null) {
+                    LocalDateTime dataPedido = pedido.getHorarioEntrada();
+
+                    if (dataPedido == null || dataPedido.toLocalDate().isBefore(inicio) || dataPedido.toLocalDate().isAfter(fim)) {
+                        continue;
+                    }
+                }
+
+                StatusPedido status = pedido.getStatus();
+
+                if (status == null) {
+                    continue;
+                }
+
+                quantidadePorStatus.merge(status, 1L, Long::sum);
+            }
+
+            List<DashboardStatusDTO> resultado = new ArrayList<>();
+
+            for (StatusPedido status : StatusPedido.values()) {
+                long quantidade = quantidadePorStatus.get(status);
+                resultado.add(new DashboardStatusDTO(status, quantidade));
             }
 
             return resultado;
